@@ -78,7 +78,7 @@ _C.CUDNN.BENCHMARK = True
 # ---------------------------------- Misc options --------------------------- #
 
 _C.DESC = ""
-_C.SEED = -1
+_C.SEED = 42
 _C.OUTPUT_DIR = "./output"
 _C.DATA_DIR = "../datasets"
 _C.CKPT_DIR = "./ckpt"
