@@ -3,7 +3,6 @@ from .ODPBlockwiseFilter import ODPBlockwiseFilter
 from .ConsistencyFilter import ConsistencyFilter
 from .CertaintyFilter import CertaintyFilter
 
-
 class P_Cube_Filter:
     def __init__(self, source_model):
         self.source_model = source_model

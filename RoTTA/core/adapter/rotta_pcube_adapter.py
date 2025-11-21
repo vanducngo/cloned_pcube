@@ -44,7 +44,7 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
             loss = self.p_cube.adapt_from_memory(student_model=model, 
                                                  teacher_model=self.model_ema)
 
-        # ADAPTER THỰC HIỆN CẬP NHẬT
+            # ADAPTER THỰC HIỆN CẬP NHẬT
             if loss is not None:
                 optimizer.zero_grad()
                 loss.backward()

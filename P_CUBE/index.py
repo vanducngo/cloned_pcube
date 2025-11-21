@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 
 from P_CUBE.purgeable_memory_bank import replay_and_update_pipeline
-from .memory.MemoryItem import MemoryItem
 from .filter.index import P_Cube_Filter
 from .memory.PCubeMemoryBank import PCubeMemoryBank
 
@@ -41,12 +40,12 @@ class P_CUBE(torch.nn.Module):
         # Sử dụng teacher model để lọc, vì nó ổn định hơn
         clean_mask = self.filter.filter_batch(batch_data, teacher_model)
         
+        # --- GIAI ĐOẠN 2: QUẢN LÝ BỘ NHỚ ---
         if clean_mask.sum() > 0:
             clean_samples = batch_data[clean_mask]
             
-            # --- GIAI ĐOẠN 2: QUẢN LÝ BỘ NHỚ ---
             # Lấy các thông tin cần thiết từ các mẫu sạch
-            clean_features = teacher_model.get_features(clean_samples) # Giả sử có hàm này
+            clean_features = teacher_model.get_features(clean_samples)
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
             clean_pseudo_labels = clean_probs.argmax(dim=1)
@@ -55,9 +54,6 @@ class P_CUBE(torch.nn.Module):
             # Thêm batch mẫu sạch vào bộ nhớ
             self.memory.add_clean_samples_batch(clean_samples, clean_features, 
                                                  clean_pseudo_labels, clean_entropies)
-
-            # Quản lý vĩ mô (xem xét chuyển logic này vào add_clean_samples_batch)
-            self.memory._check_for_domain_shift(teacher_model)
 
         # Trả về dự đoán của teacher model cho toàn bộ batch ban đầu
         return teacher_model(batch_data)

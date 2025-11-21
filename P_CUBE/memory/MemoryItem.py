@@ -1,8 +1,10 @@
 class MemoryItem:
-    def __init__(self, data=None, uncertainty=0, age=0):
-        self.data = data
+    def __init__(self, sample, pseudo_label, uncertainty, feature=None):
+        self.sample = sample
+        self.feature = feature
+        self.pseudo_label = pseudo_label
         self.uncertainty = uncertainty
-        self.age = age
+        self.age = 0
 
     def increase_age(self):
         if not self.empty():
