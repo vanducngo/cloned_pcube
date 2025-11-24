@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
+from P_CUBE.features import get_features_from_model
 from P_CUBE.replay import _calculate_replay_loss
 from .filter.index import P_Cube_Filter
 from .memory.PCubeMemoryBank import PCubeMemoryBank
@@ -42,8 +43,9 @@ class P_CUBE(nn.Module):
             clean_samples = batch_data[clean_mask]
             
             # Lấy các thông tin cần thiết từ các mẫu sạch
-            # Giả định teacher_model có hàm get_features
-            clean_features = teacher_model.get_features(clean_samples) 
+            classifier_name = self.cfg.MODEL.CLASSIFIER_NAME # ví dụ: 'fc' hoặc 'classifier'
+            clean_features = get_features_from_model(teacher_model, clean_samples, classifier_name)
+
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
             clean_pseudo_labels = clean_probs.argmax(dim=1)

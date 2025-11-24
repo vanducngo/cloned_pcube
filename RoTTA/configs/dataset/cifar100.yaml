@@ -1,5 +1,6 @@
 MODEL:
   ARCH: Hendrycks2020AugMix_ResNeXt
+  CLASSIFIER_NAME: 'classifier'
 CORRUPTION:
   DATASET: cifar100
   NUM_CLASS: 100

@@ -1,5 +1,6 @@
 MODEL:
   ARCH: Standard
+  CLASSIFIER_NAME: 'fc'
 CORRUPTION:
   DATASET: cifar10
   NUM_CLASS: 10

@@ -9,6 +9,7 @@ cfg = _C
 _C.MODEL = CN()
 
 _C.MODEL.ARCH = 'Standard'
+_C.MODEL.CLASSIFIER_NAME = ''
 
 _C.MODEL.EPISODIC = False
 
