@@ -24,3 +24,29 @@ ADAPTER:
 LOADER:
   SAMPLER:
     TYPE: "temporal"
+
+P_CUBE:
+  # --- Siêu tham số cho Giai đoạn 1: Lọc ---
+  FILTER:
+    ODP_RATIO: 0.1         # Tỷ lệ tỉa cho ODP
+    ODP_THRESHOLD: 0.2     # Ngưỡng ODP để loại bỏ
+    # CERTAINTY_THRESHOLD đã có trong ADAPTER.RoTTA.LAMBDA_U, nhưng để riêng cho rõ ràng
+    ENTROPY_THRESHOLD: 1.5 
+
+  # --- Siêu tham số cho Giai đoạn 2: Memory Bank ---
+  CAPACITY: 64             # Kích thước bộ đệm
+  MAX_AGE: 192             # Tuổi thọ tối đa (ví dụ: 3 * capacity)
+  ACCELERATION_FACTOR: 10  # Hệ số lão hóa cấp tốc
+  KL_CHECK_INTERVAL: 64    # Tần suất kiểm tra thay đổi miền
+  KL_THRESHOLD: 5.0        # Ngưỡng KL-divergence để phát hiện đỉnh
+  EMA_MOMENTUM: 0.9        # Momentum cho stats_ema
+
+  # Lambda_t và Lambda_u cho Heuristic Score (kế thừa từ RoTTA)
+  LAMBDA_T: 1.0
+  LAMBDA_U: 1.0
+
+  # --- Siêu tham số cho Giai đoạn 3: Replay ---
+  REPLAY:
+    NUM_AUG_CHECKS: 2      # Số lượng weak augment để kiểm tra độ ổn định
+    W_ENT: 1.0             # Trọng số cho Entropy trong loss weighting
+    W_DIS: 0.5             # Trọng số cho Disagreement trong loss weighting
