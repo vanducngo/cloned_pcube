@@ -7,30 +7,31 @@ from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
 class PCubeMemoryBank:
-    def __init__(self, capacity, num_classes, lambda_t=1.0, lambda_u=1.0, 
-                 max_age=None, kl_threshold=5.0, acceleration_factor=10, 
-                 ema_momentum=0.9, kl_check_interval=64):
+    def __init__(self, cfg):
         
-        print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={capacity}")
-        self.capacity = capacity
-        self.num_classes = num_classes
+        
+        self.capacity = cfg.P_CUBE.CAPACITY
+        self.num_classes = cfg.CORRUPTION.NUM_CLASS
         self.per_class_capacity = self.capacity / self.num_classes
-        self.lambda_t = lambda_t
-        self.lambda_u = lambda_u
+        self.lambda_t = cfg.P_CUBE.LAMBDA_T
+        self.lambda_u = cfg.P_CUBE.LAMBDA_U
+        self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
 
+        print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={self.capacity}")
+        
         self.data: list[list[MemoryItem]] = [[] for _ in range(self.num_classes)]
 
         # --- Các thành phần cho Giai đoạn 2 (Quản lý Vòng đời) ---
-        self.max_age = max_age if max_age is not None else capacity * 3 # Mặc định
-        self.acceleration_factor = acceleration_factor
-        self.kl_check_interval = kl_check_interval
+        self.max_age = cfg.P_CUBE.MAX_AGE
+        self.acceleration_factor = cfg.P_CUBE.ACCELERATION_FACTOR
+        self.kl_check_interval = cfg.P_CUBE.KL_CHECK_INTERVAL
         self.updates_since_last_check = 0
         
         # Cho việc phát hiện thay đổi miền
         self.stats_ema = {} # Thống kê dài hạn, được làm mịn
-        self.ema_momentum = ema_momentum
+        self.ema_momentum = cfg.P_CUBE.EMA_MOMENTUM
         
-        self.peak_detector = OnlinePeakDetector(window_size=10, threshold=kl_threshold, influence=0.5)
+        self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
     def add_clean_samples_batch(self, clean_samples, clean_pseudo_labels, clean_entropies, 
                                 current_model, clean_features=None):
