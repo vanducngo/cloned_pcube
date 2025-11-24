@@ -18,7 +18,8 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     """
     
     # Gom dữ liệu từ batch replay
-    samples = torch.stack([item.sample for item in replay_batch]).to(teacher_model.device)
+    device = next(teacher_model.parameters()).device
+    samples = torch.stack([item.sample for item in replay_batch]).to(device)
     
     # --- Bước 1: Tạo Nhãn giả Dự thảo bằng Paired-View (Insight từ DPLOT) ---
     with torch.no_grad():
@@ -88,8 +89,6 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     weighted_loss = torch.sum(normalized_weights * individual_losses.reshape(-1))
     
     return weighted_loss
-
-# --- Các hàm tiện ích cần được định nghĩa ở nơi khác ---
 
 def get_weak_augment_transform(cfg):
     # Hàm này sẽ trả về một đối tượng transform của torchvision
