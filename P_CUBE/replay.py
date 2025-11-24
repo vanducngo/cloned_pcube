@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torchvision import transforms
 
 @torch.enable_grad()
 def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
@@ -91,13 +92,57 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     return weighted_loss
 
 def get_weak_augment_transform(cfg):
-    # Hàm này sẽ trả về một đối tượng transform của torchvision
-    # ví dụ: transforms.Compose([transforms.RandomResizedCrop(...), ...])
-    # Dựa trên cấu hình trong cfg
-    pass
+    # Lấy các giá trị từ config, có thể cung cấp giá trị mặc định
+    crop_scale_min = 0.8 #cfg.P_CUBE.REPLAY.AUG.CROP_SCALE_MIN # ví dụ: 0.8
+    crop_scale_max = 1.0 #cfg.P_CUBE.REPLAY.AUG.CROP_SCALE_MAX # ví dụ: 1.0
+    brightness_factor = 0.2 #cfg.P_CUBE.REPLAY.AUG.BRIGHTNESS # ví dụ: 0.2
+    contrast_factor = 0.2 #cfg.P_CUBE.REPLAY.AUG.CONTRAST # ví dụ: 0.2
+    
+    # Giả sử kích thước ảnh đầu vào là 32x32 cho CIFAR
+    input_size = 32 #cfg.DATA.INPUT_SIZE # ví dụ: 32
+
+    weak_augment = transforms.Compose([
+        # Cắt một vùng ngẫu nhiên có kích thước từ 80% đến 100% ảnh gốc,
+        # sau đó resize lại về kích thước ban đầu.
+        transforms.RandomResizedCrop(size=input_size, scale=(crop_scale_min, crop_scale_max)),
+        
+        # Thay đổi ngẫu nhiên độ sáng, tương phản, bão hòa và màu sắc ở mức độ nhẹ.
+        transforms.ColorJitter(
+            brightness=brightness_factor,
+            contrast=contrast_factor,
+            saturation=0, # Giữ nguyên saturation và hue để tránh thay đổi màu quá mạnh
+            hue=0
+        ),
+        # Có thể thêm các phép augment nhẹ khác nếu cần, ví dụ:
+        # transforms.RandomAffine(degrees=5), # Xoay nhẹ
+    ])
+
+    return weak_augment
 
 def symmetric_cross_entropy_loss(outputs, targets, reduction='mean'):
-    # Hàm này triển khai SCE loss
-    # loss = alpha * CE(outputs, targets) + beta * RCE(outputs, targets)
-    # ...
-    pass
+    alpha = 1.0
+    beta = 1.0
+
+    # Chuyển logits thành xác suất
+    probs = F.softmax(outputs, dim=1)
+    
+    # 1. Tính Cross-Entropy (CE)
+    # CE(p, q) = -sum(q * log(p))
+    ce_loss = -torch.sum(targets * torch.log(probs + 1e-8), dim=1)
+
+    # 2. Tính Reverse Cross-Entropy (RCE)
+    # RCE(p, q) = -sum(p * log(q))
+    rce_loss = -torch.sum(probs * torch.log(targets + 1e-8), dim=1)
+
+    # 3. Kết hợp lại
+    loss = alpha * ce_loss + beta * rce_loss
+
+    # Áp dụng reduction
+    if reduction == 'mean':
+        return loss.mean()
+    elif reduction == 'sum':
+        return loss.sum()
+    elif reduction == 'none':
+        return loss
+    else:
+        raise ValueError(f"Invalid reduction: {reduction}")
