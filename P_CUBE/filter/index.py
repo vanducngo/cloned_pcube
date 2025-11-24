@@ -33,9 +33,8 @@ class P_Cube_Filter:
         final_mask = torch.ones(len(batch_samples), dtype=torch.bool, device=batch_samples.device)
 
         # --- Cổng 1: Lọc Ổn định (ODP) ---
-        # Hàm check_batch trả về mask có cùng kích thước với đầu vào của nó
-        stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
-        final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
+        # stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
+        # final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
         
         # Nếu không có mẫu nào còn lại, thoát sớm để tiết kiệm tính toán
         if final_mask.sum() == 0:
@@ -43,24 +42,22 @@ class P_Cube_Filter:
             return final_mask
         
         # --- Cổng 2: Lọc Nhất quán ---
-        # Chỉ chạy trên các mẫu đã vượt qua cổng 1
-        samples_to_check_consistency = batch_samples[final_mask]
-        consistent_mask_relative = self.consistency_filter.check_batch(samples_to_check_consistency, current_model)
+        # samples_to_check_consistency = batch_samples[final_mask]
+        # consistent_mask_relative = self.consistency_filter.check_batch(samples_to_check_consistency, current_model)
         
         # Cập nhật mask tổng: đặt các vị trí không nhất quán thành False
-        # Đây là cách làm trực tiếp và dễ hiểu hơn
-        final_mask[final_mask.clone()] = consistent_mask_relative
+        # final_mask[final_mask.clone()] = consistent_mask_relative
         
         if final_mask.sum() == 0:
             print("P-CUBE Filter: 0 samples passed after Consistency filter.")
             return final_mask
 
         # --- Cổng 3: Lọc Chắc chắn ---
-        samples_to_check_certainty = batch_samples[final_mask]
-        certain_mask_relative, _ = self.certainty_filter.check_batch(samples_to_check_certainty, current_model)
+        # samples_to_check_certainty = batch_samples[final_mask]
+        # certain_mask_relative, _ = self.certainty_filter.check_batch(samples_to_check_certainty, current_model)
         
         # Cập nhật mask tổng lần cuối
-        final_mask[final_mask.clone()] = certain_mask_relative
+        # final_mask[final_mask.clone()] = certain_mask_relative
         
         print(f"P-CUBE Filter: {final_mask.sum().item()}/{len(batch_samples)} samples passed.")
         return final_mask
