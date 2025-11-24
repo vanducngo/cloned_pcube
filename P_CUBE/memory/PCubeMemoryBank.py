@@ -69,30 +69,30 @@ class PCubeMemoryBank:
         if self._should_remove_instance(target_class, new_score):
             self.data[target_class].append(new_item)
             
-    # --- BỔ SUNG HÀM _check_for_domain_shift ---
     def _check_for_domain_shift(self, current_model):
         """
         Thực hiện logic phát hiện thay đổi miền và kích hoạt lão hóa cấp tốc.
         """
-        # Cần có đủ mẫu trong buffer để tính thống kê có ý nghĩa
         if self.get_occupancy() < self.kl_check_interval:
             return
 
         print("Checking for domain shift...")
-        # 1. Tính stats_snapshot từ bộ đệm hiện tại
-        # Giả sử model có các lớp BN/LN được định nghĩa
-        target_layers = [m for m in current_model.modules() if isinstance(m, (nn.BatchNorm2d, nn.LayerNorm))]
-        stats_snapshot = calculate_stats_on_buffer(self.buffer, current_model, target_layers)
         
-        # 2. Cập nhật và tính KL
-        if not self.stats_ema: # Khởi tạo lần đầu
+        # 1. Làm phẳng (flatten) self.data để có một danh sách các MemoryItem
+        all_items_in_buffer = [item for class_list in self.data for item in class_list]
+        
+        # 2. Truyền danh sách đã làm phẳng vào hàm tính toán
+        target_layers = [m for m in current_model.modules() if isinstance(m, (nn.BatchNorm2d, nn.LayerNorm))]
+        stats_snapshot = calculate_stats_on_buffer(all_items_in_buffer, current_model, target_layers)
+        # ----------------------
+        
+        if not self.stats_ema:
             self.stats_ema = stats_snapshot
             return 
         
         divergence = kl_divergence(stats_snapshot, self.stats_ema)
         self.stats_ema = ema_update(self.stats_ema, stats_snapshot, self.ema_momentum)
         
-        # 3. Phát hiện đỉnh và hành động
         if self.peak_detector.is_peak(divergence):
             print(f"Domain shift detected! KL divergence peak: {divergence:.4f}. Triggering Accelerated Aging.")
             self._accelerated_aging()
