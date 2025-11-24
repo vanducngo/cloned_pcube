@@ -57,7 +57,7 @@ class P_CUBE(nn.Module):
                                                  clean_features, 
                                                  clean_pseudo_labels, 
                                                  clean_entropies,
-                                                 teacher_model) # Truyền teacher_model vào để tính stats
+                                                 teacher_model)
 
     @torch.enable_grad()
     def adapt_from_memory(self, student_model, teacher_model):

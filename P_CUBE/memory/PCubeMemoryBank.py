@@ -33,20 +33,19 @@ class PCubeMemoryBank:
         
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
-    def add_clean_samples_batch(self, clean_samples, clean_pseudo_labels, clean_entropies, 
-                                current_model, clean_features=None):
-        """
-        Hàm giao diện chính để xử lý một batch các mẫu sạch.
-        """
+    def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
         self._cleanup_expired_items()
 
         # --- Bước 2: Thêm các mẫu sạch mới vào (Quản lý Vi mô) ---
         for i in range(len(clean_samples)):
-            new_item = MemoryItem(sample=clean_samples[i].cpu(), 
-                                  pseudo_label=clean_pseudo_labels[i].item(), 
-                                  uncertainty=clean_entropies[i].item(), 
-                                  feature=clean_features[i].cpu() if clean_features is not None else None)
+            new_item = MemoryItem(
+                sample=clean_samples[i].cpu(), 
+                feature=clean_features[i].cpu() if clean_features is not None else None,
+                pseudo_label=clean_pseudo_labels[i].item(), 
+                uncertainty=clean_entropies[i].item()
+            )
+
             self._manage_and_add_single_item(new_item)
 
         # --- Bước 3: Cập nhật Trạng thái Chung ---
