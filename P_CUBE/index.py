@@ -67,7 +67,7 @@ class P_CUBE(nn.Module):
         """
         student_model.train()
         
-        replay_batch = self.memory.get_replay_batch(self.cfg.TRAIN.BATCH_SIZE)
+        replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
         
         if not replay_batch:
             return None 
