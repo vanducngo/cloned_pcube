@@ -47,9 +47,8 @@ class PCubeMemoryBank:
             )
 
             self._manage_and_add_single_item(new_item)
-
-        # --- Bước 3: Cập nhật Trạng thái Chung ---
-        self._increase_age_all()
+            # --- Bước 3: Cập nhật Trạng thái Chung ---
+            self._increase_age_all()
         
         # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
         self.updates_since_last_check += len(clean_samples)
