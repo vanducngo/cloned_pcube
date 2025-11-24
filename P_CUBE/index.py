@@ -22,7 +22,7 @@ class P_CUBE(nn.Module):
                                     source_model=source_model,
                                     odp_pruning_ratio=cfg.P_CUBE.FILTER.ODP_RATIO,
                                     odp_threshold=cfg.P_CUBE.FILTER.ODP_THRESHOLD,
-                                    certainty_entropy_threshold=cfg.P_CUBEcfg.P_CUBE.ENTROPY_THRESHOLD)
+                                    certainty_entropy_threshold=cfg.P_CUBE.FILTER.ENTROPY_THRESHOLD)
         
         # Giai đoạn 2: Memory Bank
         # Truyền toàn bộ cfg vào để MemoryBank tự lấy các siêu tham số cần thiết
