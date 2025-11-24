@@ -4,78 +4,60 @@ import torch.nn as nn
 from P_CUBE.index import P_CUBE
 from .base_adapter import BaseAdapter
 from copy import deepcopy
-from .base_adapter import softmax_entropy
 from ..utils.bn_layers import RobustBN1d, RobustBN2d
 from ..utils.utils import set_named_submodule, get_named_submodule
-from ..utils.custom_transforms import get_tta_transforms
 
 class RoTTA_PCUBE_ADPATER(BaseAdapter):
     def __init__(self, cfg, model, optimizer):
         super(RoTTA_PCUBE_ADPATER, self).__init__(cfg, model, optimizer)
 
-        # --NEW-- Giữ lại model gốc ban đầu để làm source_model cho Consistency Filter
-        source_model = deepcopy(self.model)
-        source_model.eval()
-        source_model.requires_grad_(False)
-        self.p_cube = P_CUBE(cfg=cfg, model_architecture=self.model)
+        print("--- Initializing RoTTA Adapter with P-CUBE ---")
+        # P-CUBE cần kiến trúc gốc để tự cấu hình, và nó sẽ tự tạo source_model bên trong
+        self.p_cube = P_CUBE(cfg=cfg, model_architecture=deepcopy(self.model))
 
-
+        # Teacher model (EMA model) vẫn do Adapter quản lý
         self.model_ema = self.build_ema(self.model)
-        self.transform = get_tta_transforms(cfg)
-        self.nu = cfg.ADAPTER.RoTTA.NU
-        self.update_frequency = cfg.ADAPTER.RoTTA.UPDATE_FREQUENCY  # actually the same as the size of memory bank
-        self.current_instance = 0
+
+        # Các tham số điều khiển của Adapter
+        self.nu = cfg.ADAPTER.RoTTA.NU # Momentum cho EMA teacher-student
+        self.update_frequency = cfg.ADAPTER.RoTTA.UPDATE_FREQUENCY
+        self.updates_since_last_adapt = 0
 
     @torch.enable_grad()
     def forward_and_adapt(self, batch_data, model, optimizer):
-        # batch data
+        # --- BƯỚC 1: SUY LUẬN & TRẢ VỀ KẾT QUẢ ---
+        # Trong TTA online, cần trả về kết quả ngay lập tức
         with torch.no_grad():
-            model.eval()
             self.model_ema.eval()
-            ema_out = self.model_ema(batch_data)
-
-        # --- XỬ LÝ BỘ NHỚ (KHÔNG GRADIENT) ---
-        self.p_cube.process_batch(batch_data, self.model_ema)
-
-        # --- ADAPT ĐỊNH KỲ ---
+            output = self.model_ema(batch_data)
+        
+        # --- BƯỚC 2: XỬ LÝ NỀN (BACKGROUND PROCESSING) ---
+        # Lọc và Cập nhật Memory Bank (không cần gradient)
+        self.p_cube.process_and_fill_memory(batch_data, self.model_ema)
+        
+        # --- BƯỚC 3: ADAPT ĐỊNH KỲ (HỌC TỪ BỘ NHỚ) ---
         self.updates_since_last_adapt += len(batch_data)
         if self.updates_since_last_adapt >= self.update_frequency:
-            # Gọi hàm adapt của P-CUBE để lấy loss
+            
+            # Yêu cầu P-CUBE tính toán loss từ bộ nhớ
+            # Cần truyền vào cả student và teacher model
             loss = self.p_cube.adapt_from_memory(student_model=model, 
                                                  teacher_model=self.model_ema)
-
-            # ADAPTER THỰC HIỆN CẬP NHẬT
-            if loss is not None:
+            
+            # Adapter chịu trách nhiệm thực hiện việc cập nhật
+            if loss is not None and loss > 0: # Kiểm tra loss hợp lệ
+                model.train() # Chuyển student sang mode train
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 
-                # Cập nhật Teacher model bằng EMA
+                # Cập nhật Teacher model bằng EMA sau khi Student đã được cập nhật
                 self.update_ema_variables(self.model_ema, model, self.nu)
 
-        return ema_out
-
-    def update_model(self, model, optimizer):
-        model.train()
-        self.model_ema.train()
-        # get memory data
-        sup_data, ages = self.mem.get_memory()
-        l_sup = None
-        if len(sup_data) > 0:
-            sup_data = torch.stack(sup_data)
-            strong_sup_aug = self.transform(sup_data)
-            ema_sup_out = self.model_ema(sup_data)
-            stu_sup_out = model(strong_sup_aug)
-            instance_weight = timeliness_reweighting(ages)
-            l_sup = (softmax_entropy(stu_sup_out, ema_sup_out) * instance_weight).mean()
-
-        l = l_sup
-        if l is not None:
-            optimizer.zero_grad()
-            l.backward()
-            optimizer.step()
-
-        self.update_ema_variables(self.model_ema, self.model, self.nu)
+            # Reset bộ đếm
+            self.updates_since_last_adapt = 0
+            
+        return output
 
     @staticmethod
     def update_ema_variables(ema_model, model, nu):
@@ -106,10 +88,3 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
             momentum_bn.requires_grad_(True)
             set_named_submodule(model, name, momentum_bn)
         return model
-
-
-def timeliness_reweighting(ages):
-    if isinstance(ages, list):
-        ages = torch.tensor(ages).float().cuda()
-    return torch.exp(-ages) / (1 + torch.exp(-ages))
-

@@ -3,12 +3,7 @@ import torch
 
 class CertaintyFilter:
     def __init__(self, entropy_threshold):
-        """
-        Khởi tạo bộ lọc Chắc chắn dựa trên entropy.
-
-        Args:
-            entropy_threshold (float): Ngưỡng entropy. Mẫu có entropy cao hơn ngưỡng này sẽ bị loại.
-        """
+        # Ngưỡng entropy. Mẫu có entropy cao hơn ngưỡng này sẽ bị loại.
         self.threshold = entropy_threshold
 
     @torch.no_grad()

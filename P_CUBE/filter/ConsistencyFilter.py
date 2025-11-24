@@ -3,13 +3,7 @@ import torch
 
 class ConsistencyFilter:
     def __init__(self, source_model):
-        """
-        Khởi tạo bộ lọc Nhất quán.
-
-        Args:
-            source_model (torch.nn.Module): Một bản sao của mô hình gốc, 
-                                             được giữ cố định và không bao giờ được cập nhật.
-        """
+        # source_model: bản sao của mô hình gốc,được giữ cố định và không bao giờ được cập nhật.
         self.source_model = source_model
         # Chuyển source_model sang GPU nếu cần và đặt ở chế độ eval
         self.device = next(source_model.parameters()).device
