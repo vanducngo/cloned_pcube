@@ -8,6 +8,7 @@ class ODPBlockwiseFilter:
     def __init__(self, model_architecture, pruning_ratio=0.1, threshold=0.2):
         self.pruning_ratio = pruning_ratio
         self.threshold = threshold
+        self.quantile = 0.85
         
         self.prunable_block_names = self._find_prunable_block_names(model_architecture)
         print(f"ODPFilter: Found {len(self.prunable_block_names)} prunable blocks to monitor: {self.prunable_block_names}")
@@ -96,6 +97,10 @@ class ODPBlockwiseFilter:
             per_block_scores.append(scores)
         
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
+
+        # Chỉ lấy 85% top
+        self.threshold = torch.quantile(final_odp_scores, q=self.quantile)
+
         is_stable_mask = (final_odp_scores < self.threshold)
 
         # --- THÊM PHẦN DEBUGGING ---
