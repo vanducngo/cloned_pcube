@@ -69,6 +69,7 @@ class P_CUBE(nn.Module):
         Đây là hàm duy nhất cần gradient.
         """
         student_model.train()
+        teacher_model.train()
         
         # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
         # if not replay_batch:
@@ -84,6 +85,12 @@ class P_CUBE(nn.Module):
         
         
         sup_data, ages = self.memory.get_memory()
+
+        device = next(teacher_model.parameters()).device
+        # Chuyển dữ liệu sang đúng device
+        sup_data = torch.stack(sup_data).to(device)
+        ages = torch.tensor(ages).float().to(device)
+        
         l_sup = None
         if len(sup_data) > 0:
             sup_data = torch.stack(sup_data)
