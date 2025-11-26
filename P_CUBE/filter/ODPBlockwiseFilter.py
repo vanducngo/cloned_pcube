@@ -103,20 +103,20 @@ class ODPBlockwiseFilter:
 
         is_stable_mask = (final_odp_scores < self.threshold)
 
-        # --- THÊM PHẦN DEBUGGING ---
-        print("----- ODP Filter Debug -----")
-        print(f"Threshold: {self.threshold}")
-        if len(final_odp_scores) > 0:
-            print(f"ODP Scores (Batch of {len(final_odp_scores)}):")
-            print(f"  - Min:    {final_odp_scores.min():.6f}")
-            print(f"  - Max:    {final_odp_scores.max():.6f}")
-            print(f"  - Mean:   {final_odp_scores.mean():.6f}")
-            print(f"  - Median: {torch.median(final_odp_scores):.6f}")
+        # --- DEBUGGING ---
+        # print("----- ODP Filter Debug -----")
+        # print(f"Threshold: {self.threshold}")
+        # if len(final_odp_scores) > 0:
+        #     print(f"ODP Scores (Batch of {len(final_odp_scores)}):")
+        #     print(f"  - Min:    {final_odp_scores.min():.6f}")
+        #     print(f"  - Max:    {final_odp_scores.max():.6f}")
+        #     print(f"  - Mean:   {final_odp_scores.mean():.6f}")
+        #     print(f"  - Median: {torch.median(final_odp_scores):.6f}")
 
-            # In ra 5 giá trị cao nhất để xem chúng có gần ngưỡng không
-            top5_scores, _ = torch.topk(final_odp_scores, k=min(5, len(final_odp_scores)))
-            print(f"  - Top 5 Scores: {top5_scores.cpu().numpy()}")
-        print("--------------------------")
+        #     # In ra 5 giá trị cao nhất để xem chúng có gần ngưỡng không
+        #     top5_scores, _ = torch.topk(final_odp_scores, k=min(5, len(final_odp_scores)))
+        #     print(f"  - Top 5 Scores: {top5_scores.cpu().numpy()}")
+        # print("--------------------------")
         # --------------------------
         
         return is_stable_mask, final_odp_scores
