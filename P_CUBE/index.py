@@ -108,7 +108,7 @@ class P_CUBE(nn.Module):
     def softmax_entropy(self, x, x_ema):
         return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
 
-    def timeliness_reweighting(ages):
+    def timeliness_reweighting(self, ages):
         if isinstance(ages, list):
             ages = torch.tensor(ages).float().cuda()
         return torch.exp(-ages) / (1 + torch.exp(-ages))
