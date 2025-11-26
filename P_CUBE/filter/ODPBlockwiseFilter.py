@@ -8,7 +8,7 @@ class ODPBlockwiseFilter:
     def __init__(self, model_architecture, pruning_ratio=0.1, threshold=0.2):
         self.pruning_ratio = pruning_ratio
         self.threshold = threshold
-        self.quantile = 0.9
+        self.quantile = 0.85
         
         self.prunable_block_names = self._find_prunable_block_names(model_architecture)
         print(f"ODPFilter: Found {len(self.prunable_block_names)} prunable blocks to monitor: {self.prunable_block_names}")
