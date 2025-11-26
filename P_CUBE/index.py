@@ -87,13 +87,14 @@ class P_CUBE(nn.Module):
         sup_data, ages = self.memory.get_memory()
 
         device = next(teacher_model.parameters()).device
-        # Chuyển dữ liệu sang đúng device
-        sup_data = torch.stack(sup_data).to(device)
-        ages = torch.tensor(ages).float().to(device)
         
+
         l_sup = None
         if len(sup_data) > 0:
-            sup_data = torch.stack(sup_data)
+            # Chuyển dữ liệu sang đúng device
+            sup_data = torch.stack(sup_data).to(device)
+            ages = torch.tensor(ages).float().to(device)
+            
             strong_sup_aug = self.transform(sup_data)
             ema_sup_out = teacher_model(sup_data)
             stu_sup_out = student_model(strong_sup_aug)
