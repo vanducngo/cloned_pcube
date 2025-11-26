@@ -11,16 +11,6 @@ class ConsistencyFilter:
 
     @torch.no_grad()
     def check_batch(self, batch_samples, current_model):
-        """
-        Kiểm tra sự nhất quán của dự đoán trên một batch.
-
-        Args:
-            batch_samples (Tensor): Batch dữ liệu đã vượt qua các bộ lọc trước.
-            current_model (torch.nn.Module): Mô hình hiện tại đang được TTA.
-
-        Returns:
-            Tensor: Một mask boolean cho biết mẫu nào nhất quán.
-        """
         # Nếu không có mẫu nào để kiểm tra, trả về mask rỗng
         if batch_samples.numel() == 0:
             return torch.tensor([], dtype=torch.bool, device=self.device)

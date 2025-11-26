@@ -42,11 +42,11 @@ class P_Cube_Filter:
             return final_mask
         
         # --- Cổng 2: Lọc Nhất quán ---
-        # samples_to_check_consistency = batch_samples[final_mask]
-        # consistent_mask_relative = self.consistency_filter.check_batch(samples_to_check_consistency, current_model)
+        samples_to_check_consistency = batch_samples[final_mask]
+        consistent_mask_relative = self.consistency_filter.check_batch(samples_to_check_consistency, current_model)
         
         # Cập nhật mask tổng: đặt các vị trí không nhất quán thành False
-        # final_mask[final_mask.clone()] = consistent_mask_relative
+        final_mask[final_mask.clone()] = consistent_mask_relative
         
         if final_mask.sum() == 0:
             print("P-CUBE Filter: 0 samples passed after Consistency filter.")
