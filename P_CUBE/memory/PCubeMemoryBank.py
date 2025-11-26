@@ -8,8 +8,6 @@ from .MemoryItem import MemoryItem
 
 class PCubeMemoryBank:
     def __init__(self, cfg):
-        
-        
         self.capacity = cfg.P_CUBE.CAPACITY
         self.num_classes = cfg.CORRUPTION.NUM_CLASS
         self.per_class_capacity = self.capacity / self.num_classes
@@ -159,3 +157,16 @@ class PCubeMemoryBank:
         if len(all_items) < batch_size:
             return None
         return random.sample(all_items, batch_size)
+    
+    def get_memory(self):
+        tmp_data = []
+        tmp_age = []
+
+        for class_list in self.data:
+            for item in class_list:
+                tmp_data.append(item.data)
+                tmp_age.append(item.age)
+
+        tmp_age = [x / self.capacity for x in tmp_age]
+
+        return tmp_data, tmp_age

@@ -49,8 +49,8 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
                 loss.backward()
                 optimizer.step()
                 
-                # Cập nhật Teacher model bằng EMA sau khi Student đã được cập nhật
-                self.update_ema_variables(self.model_ema, model, self.nu)
+            # Cập nhật Teacher model bằng EMA sau khi Student đã được cập nhật
+            self.update_ema_variables(self.model_ema, model, self.nu)
 
             # Reset bộ đếm
             self.updates_since_last_adapt = 0

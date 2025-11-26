@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
+from P_CUBE.custom_transforms import get_tta_transforms
 from P_CUBE.features import get_features_from_model
 from P_CUBE.replay import _calculate_replay_loss
 from .filter.index import P_Cube_Filter
@@ -26,6 +27,8 @@ class P_CUBE(nn.Module):
         # Giai đoạn 2: Memory Bank
         # Truyền toàn bộ cfg vào để MemoryBank tự lấy các siêu tham số cần thiết
         self.memory = PCubeMemoryBank(cfg=cfg)
+
+        self.transform = get_tta_transforms(cfg)
         
     @torch.no_grad()
     def process_and_fill_memory(self, batch_data, teacher_model):
@@ -49,7 +52,7 @@ class P_CUBE(nn.Module):
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
             clean_pseudo_labels = clean_probs.argmax(dim=1)
-            clean_entropies = torch.sum(-clean_probs * torch.log(clean_probs + 1e-8), dim=1)
+            clean_entropies = -torch.sum(clean_probs * torch.log(clean_probs + 1e-8), dim=1)
             
             # Thêm batch mẫu sạch vào bộ nhớ.
             # Logic quản lý vĩ mô (check domain shift) đã được đóng gói bên trong hàm này.
@@ -67,15 +70,37 @@ class P_CUBE(nn.Module):
         """
         student_model.train()
         
-        replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
-        
-        if not replay_batch:
-            return None 
+        # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
+        # if not replay_batch:
+        #     return None 
 
         # --- GIAI ĐOẠN 3: TÍNH TOÁN LOSS ---
         # Gọi hàm tính loss đã được module hóa
-        loss = _calculate_replay_loss(replay_batch, 
-                                      student_model, 
-                                      teacher_model,
-                                      self.cfg) # Truyền cfg vào để lấy weak_augment_transform và các siêu tham số loss
-        return loss
+        # loss = _calculate_replay_loss(replay_batch, 
+        #                               student_model, 
+        #                               teacher_model,
+        #                               self.cfg) # Truyền cfg vào để lấy weak_augment_transform và các siêu tham số loss
+        # return loss
+        
+        
+        sup_data, ages = self.memory.get_memory()
+        l_sup = None
+        if len(sup_data) > 0:
+            sup_data = torch.stack(sup_data)
+            strong_sup_aug = self.transform(sup_data)
+            ema_sup_out = teacher_model(sup_data)
+            stu_sup_out = student_model(strong_sup_aug)
+            instance_weight = self.timeliness_reweighting(ages)
+            l_sup = (self.softmax_entropy(stu_sup_out, ema_sup_out) * instance_weight).mean()
+
+        l = l_sup
+        return l
+    
+    @torch.jit.script
+    def softmax_entropy(self, x, x_ema):
+        return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
+
+    def timeliness_reweighting(ages):
+        if isinstance(ages, list):
+            ages = torch.tensor(ages).float().cuda()
+        return torch.exp(-ages) / (1 + torch.exp(-ages))
