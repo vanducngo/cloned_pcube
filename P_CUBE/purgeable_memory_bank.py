@@ -72,8 +72,7 @@ class PurgeableMemoryBank:
         model.eval()
         
         # Gom tất cả các mẫu dữ liệu từ buffer thành một batch lớn
-        # all_samples = torch.stack([item.sample for item in buffer]).cuda()
-        all_samples = torch.stack([item.sample for item in buffer]).cpu()
+        all_samples = torch.stack([item.sample for item in buffer]).cuda()
 
         # Sử dụng hooks để "bắt" các activations tại các lớp mục tiêu
         activations = {}
@@ -265,8 +264,7 @@ def replay_and_update_pipeline(replay_batch, student_model, teacher_model, optim
     """
     Thực hiện pipeline Giai đoạn 3: Replay và Tạo Nhãn giả Chất lượng cao.
     """
-    # samples = torch.stack([item.sample for item in replay_batch]).cuda()
-    samples = torch.stack([item.sample for item in replay_batch]).cpu()
+    samples = torch.stack([item.sample for item in replay_batch]).cuda()
 
     # --- Bước 1: Tạo Nhãn giả Dự thảo bằng Paired-View ---
     with torch.no_grad():
