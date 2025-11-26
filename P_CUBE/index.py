@@ -104,7 +104,6 @@ class P_CUBE(nn.Module):
         l = l_sup
         return l
     
-    @torch.jit.script
     def softmax_entropy(self, x, x_ema):
         return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
 
