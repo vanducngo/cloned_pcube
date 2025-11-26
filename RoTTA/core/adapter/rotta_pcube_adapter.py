@@ -26,19 +26,17 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
     @torch.enable_grad()
     def forward_and_adapt(self, batch_data, model, optimizer):
         # --- BƯỚC 1: SUY LUẬN & TRẢ VỀ KẾT QUẢ ---
-        # Trong TTA online, cần trả về kết quả ngay lập tức
         with torch.no_grad():
             self.model_ema.eval()
             output = self.model_ema(batch_data)
         
-        # --- BƯỚC 2: XỬ LÝ NỀN (BACKGROUND PROCESSING) ---
+        # --- BƯỚC 2: BACKGROUND PROCESSING ---
         # Lọc và Cập nhật Memory Bank (không cần gradient)
         self.p_cube.process_and_fill_memory(batch_data, self.model_ema)
         
         # --- BƯỚC 3: ADAPT ĐỊNH KỲ (HỌC TỪ BỘ NHỚ) ---
         self.updates_since_last_adapt += len(batch_data)
         if self.updates_since_last_adapt >= self.update_frequency:
-            
             # Yêu cầu P-CUBE tính toán loss từ bộ nhớ
             # Cần truyền vào cả student và teacher model
             loss = self.p_cube.adapt_from_memory(student_model=model, 

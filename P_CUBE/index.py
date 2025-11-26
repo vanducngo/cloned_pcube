@@ -49,7 +49,7 @@ class P_CUBE(nn.Module):
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
             clean_pseudo_labels = clean_probs.argmax(dim=1)
-            clean_entropies = -torch.sum(clean_probs * torch.log(clean_probs + 1e-8), dim=1)
+            clean_entropies = torch.sum(-clean_probs * torch.log(clean_probs + 1e-8), dim=1)
             
             # Thêm batch mẫu sạch vào bộ nhớ.
             # Logic quản lý vĩ mô (check domain shift) đã được đóng gói bên trong hàm này.
