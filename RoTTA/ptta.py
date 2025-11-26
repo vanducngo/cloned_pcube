@@ -22,7 +22,8 @@ def testTimeAdaptation(cfg):
     tta_adapter = build_adapter(cfg)
 
     tta_model = tta_adapter(cfg, model, optimizer)
-    tta_model.cuda()
+    # tta_model.cuda()
+    tta_model.cpu()
 
     loader, processor = build_loader(cfg, cfg.CORRUPTION.DATASET, cfg.CORRUPTION.TYPE, cfg.CORRUPTION.SEVERITY)
 
@@ -31,7 +32,8 @@ def testTimeAdaptation(cfg):
         data, label, domain = data_package["image"], data_package['label'], data_package['domain']
         if len(label) == 1:
             continue  # ignore the final single point
-        data, label = data.cuda(), label.cuda()
+        # data, label = data.cuda(), label.cuda()
+        data, label = data.cpu(), label.cpu()
         output = tta_model(data)
         predict = torch.argmax(output, dim=1)
         accurate = (predict == label)

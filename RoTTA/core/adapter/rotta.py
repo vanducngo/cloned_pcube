@@ -99,6 +99,7 @@ class RoTTA(BaseAdapter):
 
 def timeliness_reweighting(ages):
     if isinstance(ages, list):
-        ages = torch.tensor(ages).float().cuda()
+        # ages = torch.tensor(ages).float().cuda()
+        ages = torch.tensor(ages).float().cpu()
     return torch.exp(-ages) / (1 + torch.exp(-ages))
 
