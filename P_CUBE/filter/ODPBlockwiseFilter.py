@@ -38,17 +38,34 @@ class ODPBlockwiseFilter:
     def _create_pruned_versions(self):
         """Tạo ra các phiên bản bị tỉa của mỗi khối và lưu lại."""
         pruned_blocks_dict = {}
-        for name, block in self.prunable_blocks_info:
+        for i, block in enumerate(self.prunable_blocks_info):
             pruned_block = copy.deepcopy(block)
-            
-            # Tỉa tất cả các lớp Conv2d bên trong khối này
             for module in pruned_block.modules():
                 if isinstance(module, nn.Conv2d):
-                    # Quan trọng: chỉ thêm mặt nạ, không remove vĩnh viễn
+                    # Quan trọng: chỉ thêm mặt nạ, KHÔNG remove vĩnh viễn
                     prune.l1_unstructured(module, name="weight", amount=self.pruning_ratio)
-            
-            pruned_blocks_dict[name] = pruned_block
+            pruned_blocks_dict[f"block_{i}"] = pruned_block
         return pruned_blocks_dict
+
+    def _synchronize_weights(self, current_block, pruned_block):
+        """
+        Sao chép trọng số từ khối gốc sang khối bị tỉa một cách thủ công.
+        """
+        # Lấy state_dict của cả hai
+        current_state_dict = current_block.state_dict()
+        pruned_state_dict = pruned_block.state_dict()
+
+        for key in current_state_dict:
+            # Nếu key là 'weight', ta cần gán nó cho 'weight_orig'
+            if "weight" in key and key.replace("weight", "weight_orig") in pruned_state_dict:
+                pruned_key = key.replace("weight", "weight_orig")
+                pruned_state_dict[pruned_key].copy_(current_state_dict[key])
+            # Các tham số khác (như bias, trọng số BN) có thể copy bình thường
+            elif key in pruned_state_dict:
+                pruned_state_dict[key].copy_(current_state_dict[key])
+        
+        # Load lại state_dict đã được cập nhật vào pruned_block
+        pruned_block.load_state_dict(pruned_state_dict)
 
     @torch.no_grad()
     def check_batch(self, batch_samples, current_model):
@@ -65,9 +82,8 @@ class ODPBlockwiseFilter:
             return hook
 
         # Đăng ký hooks vào mô hình ĐANG THÍCH ỨNG (current_model)
-        for name, _ in self.prunable_blocks_info:
-            module = dict(current_model.named_modules())[name]
-            hooks.append(module.register_forward_hook(get_io_hook(name)))
+        for i, block in enumerate(self.prunable_blocks_info):
+            hooks.append(block.register_forward_hook(get_io_hook(f"block_{i}")))
         
         _ = current_model(batch_samples)
 
@@ -76,18 +92,16 @@ class ODPBlockwiseFilter:
 
         # --- CẢI TIẾN 3: Sử dụng các khối bị tỉa đã được tạo sẵn ---
         per_block_scores = []
-        for name, original_block in self.prunable_blocks_info:
-            pruned_block = self.pruned_blocks[name]
+        for i, original_block in enumerate(self.prunable_blocks_info):
+            block_name = f"block_{i}"
+            pruned_block = self.pruned_blocks[block_name]
             
-            # Đồng bộ trọng số trước khi tính toán ---
-            # Sao chép trọng số từ khối gốc (đã được adapt) sang khối bị tỉa
-            # Mặt nạ tỉa vẫn được giữ nguyên
-            pruned_block.load_state_dict(dict(current_model.named_modules())[name].state_dict())
-
-            # Tái tính toán chỉ trên khối đã bị tỉa
-            input_tensor = block_inputs[name]
+            self._synchronize_weights(original_block, pruned_block)
+            
+            # Tái tính toán
+            input_tensor = block_inputs[block_name]
             pruned_output = pruned_block(input_tensor)
-            original_output = block_outputs_original[name]
+            original_output = block_outputs_original[block_name]
             
             # Tính điểm ODP
             original_flat = F.normalize(original_output.flatten(1), p=2, dim=1)
