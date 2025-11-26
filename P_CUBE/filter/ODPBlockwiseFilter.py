@@ -110,7 +110,7 @@ class ODPBlockwiseFilter:
 
             # In ra 5 giá trị cao nhất để xem chúng có gần ngưỡng không
             top5_scores, _ = torch.topk(final_odp_scores, k=min(5, len(final_odp_scores)))
-            print(f"  - Top 5 Scores: {top5_scores.numpy()}")
+            print(f"  - Top 5 Scores: {top5_scores.cpu().numpy()}")
         print("--------------------------")
         # --------------------------
         
