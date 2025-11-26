@@ -33,8 +33,8 @@ class P_Cube_Filter:
         final_mask = torch.ones(len(batch_samples), dtype=torch.bool, device=batch_samples.device)
 
         # --- Cổng 1: Lọc Ổn định (ODP) ---
-        # stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
-        # final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
+        stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
+        final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
         
         # Nếu không có mẫu nào còn lại, thoát sớm để tiết kiệm tính toán
         if final_mask.sum() == 0:
