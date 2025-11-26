@@ -164,7 +164,7 @@ class PCubeMemoryBank:
 
         for class_list in self.data:
             for item in class_list:
-                tmp_data.append(item.data)
+                tmp_data.append(item.sample)
                 tmp_age.append(item.age)
 
         tmp_age = [x / self.capacity for x in tmp_age]
