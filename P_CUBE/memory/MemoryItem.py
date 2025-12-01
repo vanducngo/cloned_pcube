@@ -11,7 +11,7 @@ class MemoryItem:
             self.age += 1
 
     def get_data(self):
-        return self.data, self.uncertainty, self.age
+        return self.sample, self.uncertainty, self.age
 
     def empty(self):
-        return self.data == "empty"
+        return self.sample == None
