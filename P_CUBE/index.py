@@ -71,35 +71,35 @@ class P_CUBE(nn.Module):
         student_model.train()
         teacher_model.train()
         
-        # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
-        # if not replay_batch:
-        #     return None 
+        replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
+        if not replay_batch:
+            return None 
 
         # --- GIAI ĐOẠN 3: TÍNH TOÁN LOSS ---
         # Gọi hàm tính loss đã được module hóa
-        # loss = _calculate_replay_loss(replay_batch, 
-        #                               student_model, 
-        #                               teacher_model,
-        #                               self.cfg) # Truyền cfg vào để lấy weak_augment_transform và các siêu tham số loss
-        # return loss
+        loss = _calculate_replay_loss(replay_batch, 
+                                      student_model, 
+                                      teacher_model,
+                                      self.cfg)
+        return loss
         
-        sup_data, ages = self.memory.get_memory()
-        device = next(teacher_model.parameters()).device
+        # sup_data, ages = self.memory.get_memory()
+        # device = next(teacher_model.parameters()).device
         
-        l_sup = None
-        if len(sup_data) > 0:
-            # Chuyển dữ liệu sang đúng device
-            sup_data = torch.stack(sup_data).to(device)
-            ages = torch.tensor(ages).float().to(device)
+        # l_sup = None
+        # if len(sup_data) > 0:
+        #     # Chuyển dữ liệu sang đúng device
+        #     sup_data = torch.stack(sup_data).to(device)
+        #     ages = torch.tensor(ages).float().to(device)
             
-            strong_sup_aug = self.transform(sup_data)
-            ema_sup_out = teacher_model(sup_data)
-            stu_sup_out = student_model(strong_sup_aug)
-            instance_weight = self.timeliness_reweighting(ages)
-            l_sup = (self.softmax_entropy(stu_sup_out, ema_sup_out) * instance_weight).mean()
+        #     strong_sup_aug = self.transform(sup_data)
+        #     ema_sup_out = teacher_model(sup_data)
+        #     stu_sup_out = student_model(strong_sup_aug)
+        #     instance_weight = self.timeliness_reweighting(ages)
+        #     l_sup = (self.softmax_entropy(stu_sup_out, ema_sup_out) * instance_weight).mean()
 
-        l = l_sup
-        return l
+        # l = l_sup
+        # return l
     
     def softmax_entropy(self, x, x_ema):
         return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
