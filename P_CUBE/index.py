@@ -83,12 +83,9 @@ class P_CUBE(nn.Module):
         #                               self.cfg) # Truyền cfg vào để lấy weak_augment_transform và các siêu tham số loss
         # return loss
         
-        
         sup_data, ages = self.memory.get_memory()
-
         device = next(teacher_model.parameters()).device
         
-
         l_sup = None
         if len(sup_data) > 0:
             # Chuyển dữ liệu sang đúng device

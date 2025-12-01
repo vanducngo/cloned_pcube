@@ -36,6 +36,8 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
         
         # --- BƯỚC 3: ADAPT ĐỊNH KỲ (HỌC TỪ BỘ NHỚ) ---
         self.updates_since_last_adapt += len(batch_data)
+        # TODO: Kế thừa RoTTA, check update sau `update_frequency` mẫu
+        # => Xem xét thử nghiệm chỉ update sau `update_frequency` của "Mẫu đã qua bộ LỌC => Giảm số lượng update model"
         if self.updates_since_last_adapt >= self.update_frequency:
             # Yêu cầu P-CUBE tính toán loss từ bộ nhớ
             # Cần truyền vào cả student và teacher model

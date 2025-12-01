@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
+from P_CUBE.custom_transforms import get_tta_transforms
 
 @torch.enable_grad()
 def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
@@ -20,17 +21,17 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     
     # Gom dữ liệu từ batch replay
     device = next(teacher_model.parameters()).device
-    samples = torch.stack([item.sample for item in replay_batch]).to(device)
+    original_samples = torch.stack([item.sample for item in replay_batch]).to(device)
     
     # --- Bước 1: Tạo Nhãn giả Dự thảo bằng Paired-View (Insight từ DPLOT) ---
     with torch.no_grad():
         teacher_model.eval()
         
         # Tạo phiên bản lật ngang
-        flipped_samples = torch.flip(samples, dims=[-1])
+        flipped_samples = torch.flip(original_samples, dims=[-1])
         
         # Lấy dự đoán từ Teacher model cho cả hai phiên bản
-        outputs_original = teacher_model(samples)
+        outputs_original = teacher_model(original_samples)
         outputs_flipped = teacher_model(flipped_samples)
         
         probs_original = F.softmax(outputs_original, dim=1)
@@ -43,7 +44,6 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     with torch.no_grad():
         # 2a: Tính Độ Chắc chắn (Certainty) bằng Entropy
         entropies = -torch.sum(y_draft * torch.log(y_draft + 1e-8), dim=-1)
-        
         # 2b: Tính Độ Ổn định (Stability) bằng Augmentation Sensitivity
         disagreement_scores = torch.zeros_like(entropies)
         
@@ -52,7 +52,7 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
         num_aug_checks = cfg.P_CUBE.REPLAY.NUM_AUG_CHECKS # ví dụ: 2
 
         for _ in range(num_aug_checks):
-            augmented_samples = weak_augment_transform(samples)
+            augmented_samples = weak_augment_transform(original_samples)
             probs_aug = F.softmax(teacher_model(augmented_samples), dim=-1)
             
             # Tính KL Divergence giữa nhãn dự thảo và dự đoán của bản augment
@@ -68,21 +68,26 @@ def _calculate_replay_loss(replay_batch, student_model, teacher_model, cfg):
     # Tính điểm phạt chất lượng (quality penalty score)
     quality_penalty = (w_ent * entropies) + (w_dis * disagreement_scores)
     
-    # Chuyển thành trọng số (mẫu có penalty thấp sẽ có trọng số cao)
-    weights = torch.exp(-quality_penalty)
-    
-    # Chuẩn hóa trọng số để tổng bằng 1 (giúp loss ổn định)
-    normalized_weights = weights / (torch.sum(weights) + 1e-8)
+    # Temperature (T) là một siêu tham số mới để điều chỉnh độ "sắc nét" của trọng số.
+    weight_temperature = cfg.P_CUBE.REPLAY.WEIGHT_TEMP # ví dụ: 0.5
+    weights = F.softmax(-quality_penalty / weight_temperature, dim=0)
+    normalized_weights = weights
 
-    # --- Tính Loss cuối cùng và Cập nhật Student ---
+    # --- Bước 4: Cập nhật Student với Strong Augmentation ---
     # Đảm bảo student model ở chế độ train
     student_model.train()
     
-    # Đưa các mẫu GỐC qua Student model
-    student_outputs = student_model(samples)
+
+    # TODO: Thử nghiệm 2 phiên bản 
+    # 1. Sử dụng các mẫu GỐC qua Student model
+    # 2. Áp dụng Strong Augmentation cho Student
+    
+    # student_outputs = student_model(original_samples)
+    strong_augment_transform = get_tta_transforms(cfg)
+    student_input = strong_augment_transform(original_samples)
+    student_outputs = student_model(student_input)
     
     # Tính Symmetric Cross-Entropy (SCE) loss cho từng mẫu
-    # `reduction='none'` để có thể áp dụng trọng số
     individual_losses = symmetric_cross_entropy_loss(student_outputs, y_draft.detach(), reduction='none')
     
     # Áp dụng trọng số
