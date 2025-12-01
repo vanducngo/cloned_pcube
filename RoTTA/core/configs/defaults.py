@@ -121,6 +121,7 @@ _C.P_CUBE.REPLAY = CN()
 _C.P_CUBE.REPLAY.NUM_AUG_CHECKS = 2
 _C.P_CUBE.REPLAY.W_ENT = 1.0
 _C.P_CUBE.REPLAY.W_DIS = 0.5
+_C.P_CUBE.REPLAY.WEIGHT_TEMP = 0.5
 
 # --------------------------------- Default config -------------------------- #
 _CFG_DEFAULT = _C.clone()
