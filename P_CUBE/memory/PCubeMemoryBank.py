@@ -164,7 +164,7 @@ class PCubeMemoryBank:
         return classes
 
     def heuristic_score(self, age, uncertainty):
-        return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_class)
+        return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
 
 
     def add_age(self):
