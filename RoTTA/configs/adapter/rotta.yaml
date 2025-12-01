@@ -51,4 +51,4 @@ P_CUBE:
     NUM_AUG_CHECKS: 2      # Số lượng weak augment để kiểm tra độ ổn định
     W_ENT: 1.0             # Trọng số cho Entropy trong loss weighting
     W_DIS: 0.5             # Trọng số cho Disagreement trong loss weighting
-    WEIGHT_TEMP: 0.5
+    WEIGHT_TEMP: 1.0
