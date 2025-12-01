@@ -1,23 +1,31 @@
 import torch
-
-
+import torch.nn.functional as F
+import math
 class CertaintyFilter:
-    def __init__(self, entropy_threshold):
-        # Ngưỡng entropy. Mẫu có entropy cao hơn ngưỡng này sẽ bị loại.
-        self.threshold = entropy_threshold
+    '''
+    Bộ lọc Chắc chắn dựa trên entropy có điều chỉnh theo số lớp.
+    '''
+    def __init__(self, num_classes, threshold_factor=0.5):
+        """
+        Args:
+            num_classes (int): Tổng số lớp của bộ dữ liệu.
+            threshold_factor (float): Hệ số để tính ngưỡng (ví dụ: 0.5). 
+                                     Ngưỡng cuối cùng sẽ là factor * log(num_classes).
+        """
+        if num_classes <= 1:
+            # Nếu chỉ có 1 lớp, entropy luôn bằng 0, đặt ngưỡng rất nhỏ
+            self.threshold = 1e-6
+        else:
+            # Tính toán ngưỡng entropy dựa trên số lớp
+            # log(C) là entropy tối đa (khi dự đoán là phân phối đều)
+            self.threshold = threshold_factor * math.log(num_classes)
+        
+        print(f"CertaintyFilter initialized with threshold = {self.threshold:.4f} (factor={threshold_factor}, num_classes={num_classes})")
 
     @torch.no_grad()
     def check_batch(self, batch_samples, current_model):
         """
         Kiểm tra độ chắc chắn (entropy) của dự đoán trên một batch.
-
-        Args:
-            batch_samples (Tensor): Batch dữ liệu đã vượt qua các bộ lọc trước.
-            current_model (torch.nn.Module): Mô hình hiện tại.
-
-        Returns:
-            Tensor: Một mask boolean cho biết mẫu nào đủ chắc chắn.
-            Tensor: Một tensor chứa giá trị entropy của từng mẫu.
         """
         if batch_samples.numel() == 0:
             device = next(current_model.parameters()).device
@@ -25,15 +33,11 @@ class CertaintyFilter:
 
         current_model.eval()
 
-        # Lấy vector xác suất đầu ra
         logits = current_model(batch_samples)
         probs = F.softmax(logits, dim=1)
         
-        # Tính toán entropy cho mỗi mẫu trong batch
-        # Thêm 1e-8 để tránh log(0)
         entropies = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
         
-        # So sánh với ngưỡng để tạo mask
         is_certain_mask = (entropies < self.threshold)
         
         return is_certain_mask, entropies
