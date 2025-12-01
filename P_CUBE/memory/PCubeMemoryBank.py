@@ -46,7 +46,7 @@ class PCubeMemoryBank:
 
             self._manage_and_add_single_item(new_item)
             # --- Bước 3: Cập nhật Trạng thái Chung ---
-            self._increase_age_all()
+            self.add_age()
         
         # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
         # self.updates_since_last_check += len(clean_samples)
@@ -62,8 +62,8 @@ class PCubeMemoryBank:
 
     def _manage_and_add_single_item(self, new_item):
         target_class = new_item.pseudo_label
-        new_score = self._heuristic_score(age=0, uncertainty=new_item.uncertainty)
-        if self._should_remove_instance(target_class, new_score):
+        new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
+        if self.remove_instance(target_class, new_score):
             self.data[target_class].append(new_item)
             
     def _check_for_domain_shift(self, current_model):
@@ -105,52 +105,73 @@ class PCubeMemoryBank:
     # =========================================================
 
     def get_occupancy(self):
-        return sum(len(class_list) for class_list in self.data)
+        occupancy = 0
+        for data_per_cls in self.data:
+            occupancy += len(data_per_cls)
+        return occupancy
+    
+    def per_class_dist(self):
+        per_class_occupied = [0] * self.num_classes
+        for cls, class_list in enumerate(self.data):
+            per_class_occupied[cls] = len(class_list)
 
-    def get_class_distribution(self):
-        return [len(class_list) for class_list in self.data]
+        return per_class_occupied
         
-    def _should_remove_instance(self, cls, score):
+    def remove_instance(self, cls, score):
         class_list = self.data[cls]
-        if len(class_list) < self.per_class_capacity:
-            if self.get_occupancy() < self.capacity:
+        class_occupied = len(class_list)
+        all_occupancy = self.get_occupancy()
+        if class_occupied < self.per_class_capacity:
+            if all_occupancy < self.capacity:
                 return True
             else:
-                majority_classes = self._get_majority_classes()
-                return self._remove_from_classes(majority_classes, score)
+                majority_classes = self.get_majority_classes()
+                return self.remove_from_classes(majority_classes, score)
         else:
-            return self._remove_from_classes([cls], score)
+            return self.remove_from_classes([cls], score)
 
-    def _remove_from_classes(self, classes: list[int], score_base):
-        max_class, max_index, max_score = None, None, -1
+    def remove_from_classes(self, classes: list[int], score_base):
+        max_class = None
+        max_index = None
+        max_score = None
         for cls in classes:
             for idx, item in enumerate(self.data[cls]):
-                score = self._heuristic_score(age=item.age, uncertainty=item.uncertainty)
-                if score >= max_score:
-                    max_score, max_index, max_class = score, idx, cls
+                uncertainty = item.uncertainty
+                age = item.age
+                score = self.heuristic_score(age=age, uncertainty=uncertainty)
+                if max_score is None or score >= max_score:
+                    max_score = score
+                    max_index = idx
+                    max_class = cls
+
         if max_class is not None:
             if max_score > score_base:
                 self.data[max_class].pop(max_index)
                 return True
             else:
                 return False
-        return True
+        else:
+            return True
 
-    def _get_majority_classes(self):
-        class_dist = self.get_class_distribution()
-        max_occupied = max(class_dist) if class_dist else 0
-        if max_occupied == 0: return []
-        return [i for i, count in enumerate(class_dist) if count == max_occupied]
+    def get_majority_classes(self):
+        per_class_dist = self.per_class_dist()
+        max_occupied = max(per_class_dist)
+        classes = []
+        for i, occupied in enumerate(per_class_dist):
+            if occupied == max_occupied:
+                classes.append(i)
 
-    def _heuristic_score(self, age, uncertainty):
-        age_score = 1 / (1 + math.exp(-age / self.capacity))
-        uncertainty_score = uncertainty / math.log(self.num_classes) if self.num_classes > 1 else uncertainty
-        return self.lambda_t * age_score + self.lambda_u * uncertainty_score
+        return classes
 
-    def _increase_age_all(self):
+    def heuristic_score(self, age, uncertainty):
+        return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_class)
+
+
+    def add_age(self):
         for class_list in self.data:
             for item in class_list:
-                item.age += 1
+                item.increase_age()
+        return
                 
     def get_replay_batch(self, batch_size):
         all_items = [item for class_list in self.data for item in class_list]
