@@ -13,13 +13,32 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
         sup_data = torch.stack(sup_data).to(device)
         ages = torch.tensor(ages).float().to(device)
         
+        # --- THAY ĐỔI 1: TẠO NHÃN GIẢ BẰNG PAIRED-VIEW ---
+        with torch.no_grad():
+            teacher_model.eval()
+            flipped_samples = torch.flip(sup_data, dims=[-1])
+            
+            probs_original = F.softmax(teacher_model(sup_data), dim=1)
+            probs_flipped = F.softmax(teacher_model(flipped_samples), dim=1)
+            
+            y_draft = (probs_original + probs_flipped) / 2.0
+        # -----------------------------------------------
+
         strong_sup_aug = transform(sup_data)
-        ema_sup_out = teacher_model(sup_data)
         stu_sup_out = student_model(strong_sup_aug)
         instance_weight = timeliness_reweighting(ages)
-        l_sup = (softmax_entropy(stu_sup_out, ema_sup_out) * instance_weight).mean()
 
-    return l_sup
+        # Thay hàm softmax_entropy (chỉ là cross-entropy) bằng SCE
+        # Vì y_draft là xác suất (không phải logits), ta cần log_softmax cho stu_sup_out
+        log_probs_student = F.log_softmax(stu_sup_out, dim=1)
+
+        # Hàm loss mới là SCE, nhưng ta có thể bắt đầu với CE đơn giản
+        # CE(p, q) = -sum(q * log(p))
+        individual_losses = -torch.sum(y_draft.detach() * log_probs_student, dim=1)
+
+        loss = (individual_losses * instance_weight).mean()
+
+    return loss
 
 def softmax_entropy(x, x_ema):
     return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
