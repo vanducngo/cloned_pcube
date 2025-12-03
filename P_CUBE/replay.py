@@ -57,6 +57,8 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
         instance_weight = timeliness_reweighting(ages)
         l_sup = (softmax_entropy(stu_sup_out, draft_logits.detach()) * instance_weight).mean()
 
+        print (f"Loss over time: {l_sup}")
+
     return l_sup
 
 def softmax_entropy(x, x_ema):
