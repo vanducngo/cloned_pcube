@@ -22,6 +22,15 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
             outputs_original = teacher_model(sup_data)
             outputs_flipped = teacher_model(flipped_samples)
             
+            # --- THÊM PHẦN DEBUGGING ---
+            preds_original = outputs_original.argmax(dim=1)
+            preds_flipped = outputs_flipped.argmax(dim=1)
+            
+            # Đếm xem bao nhiêu % dự đoán bị thay đổi sau khi lật
+            disagreement_rate = (preds_original != preds_flipped).float().mean().item()
+            print(f"Flip Disagreement Rate: {disagreement_rate * 100:.2f}%")
+            # ---------------------------
+
             # Thay vì softmax, ta lấy trung bình cộng của LOGITS
             draft_logits = (outputs_original + outputs_flipped) / 2.0
         # -----------------------------------------------
