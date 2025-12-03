@@ -71,13 +71,14 @@ class P_CUBE(nn.Module):
         student_model.train()
         teacher_model.train()
         
-        replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
-        if not replay_batch:
+        # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
+        sup_data, ages = self.memory.get_memory()
+        if not sup_data:
             return None 
 
         # --- GIAI ĐOẠN 3: TÍNH TOÁN LOSS ---
         # Gọi hàm tính loss đã được module hóa
-        loss = _calculate_replay_loss(replay_batch, 
+        loss = _calculate_replay_loss(sup_data, 
                                       student_model, 
                                       teacher_model,
                                       self.cfg)

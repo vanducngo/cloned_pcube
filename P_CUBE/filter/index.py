@@ -30,7 +30,7 @@ class P_Cube_Filter:
         if num_initial_samples == 0:
             return torch.tensor([], dtype=torch.bool, device=batch_samples.device)
         
-        print(f"\n--- P-CUBE Filtering Pipeline (Input: {num_initial_samples} samples) ---")
+        # print(f"\n--- P-CUBE Filtering Pipeline (Input: {num_initial_samples} samples) ---")
 
         # Tạo mask ban đầu, tất cả đều là True
         final_mask = torch.ones(len(batch_samples), dtype=torch.bool, device=batch_samples.device)
@@ -42,7 +42,7 @@ class P_Cube_Filter:
         final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
         
         num_after_gate1 = final_mask.sum().item()
-        print(f"Gate 1 (ODP): {num_after_gate1}/{num_after_prev_gate} samples passed.")
+        # print(f"Gate 1 (ODP): {num_after_gate1}/{num_after_prev_gate} samples passed.")
         # Nếu không có mẫu nào còn lại, thoát sớm để tiết kiệm tính toán
         if num_after_gate1 == 0:
             print("P-CUBE Filter: 0 samples passed after ODP filter.")
@@ -57,7 +57,7 @@ class P_Cube_Filter:
         final_mask[final_mask.clone()] = consistent_mask_relative
 
         num_after_gate2 = final_mask.sum().item()
-        print(f"Gate 2 (Consistency): {num_after_gate2}/{num_after_prev_gate} samples passed.")
+        # print(f"Gate 2 (Consistency): {num_after_gate2}/{num_after_prev_gate} samples passed.")
         
         if num_after_gate2 == 0:
             print("P-CUBE Filter: 0 samples passed after Consistency filter.")
@@ -72,7 +72,7 @@ class P_Cube_Filter:
         final_mask[final_mask.clone()] = certain_mask_relative
         
         num_after_gate3 = final_mask.sum().item()
-        print(f"Gate 3 (Certainty): {num_after_gate3}/{num_after_prev_gate} samples passed.")
+        # print(f"Gate 3 (Certainty): {num_after_gate3}/{num_after_prev_gate} samples passed.")
         
-        print(f"--- Pipeline End: Total {final_mask.sum().item()}/{num_initial_samples} samples passed. ---\n")
+        # print(f"--- Pipeline End: Total {final_mask.sum().item()}/{num_initial_samples} samples passed. ---\n")
         return final_mask
