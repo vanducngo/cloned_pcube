@@ -18,25 +18,20 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
             teacher_model.eval()
             flipped_samples = torch.flip(sup_data, dims=[-1])
             
-            probs_original = F.softmax(teacher_model(sup_data), dim=1)
-            probs_flipped = F.softmax(teacher_model(flipped_samples), dim=1)
+            # Lấy logits từ Teacher
+            outputs_original = teacher_model(sup_data)
+            outputs_flipped = teacher_model(flipped_samples)
             
-            y_draft = (probs_original + probs_flipped) / 2.0
+            # Thay vì softmax, ta lấy trung bình cộng của LOGITS
+            draft_logits = (outputs_original + outputs_flipped) / 2.0
         # -----------------------------------------------
 
+        student_model.train()
         strong_sup_aug = transform(sup_data)
         stu_sup_out = student_model(strong_sup_aug)
         instance_weight = timeliness_reweighting(ages)
 
-        # Thay hàm softmax_entropy (chỉ là cross-entropy) bằng SCE
-        # Vì y_draft là xác suất (không phải logits), ta cần log_softmax cho stu_sup_out
-        log_probs_student = F.log_softmax(stu_sup_out, dim=1)
-
-        # Hàm loss mới là SCE, nhưng ta có thể bắt đầu với CE đơn giản
-        # CE(p, q) = -sum(q * log(p))
-        individual_losses = -torch.sum(y_draft.detach() * log_probs_student, dim=1)
-
-        loss = (individual_losses * instance_weight).mean()
+        loss = (softmax_entropy(stu_sup_out, draft_logits.detach()) * instance_weight).mean()
 
     return loss
 
