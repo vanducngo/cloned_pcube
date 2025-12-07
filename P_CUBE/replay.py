@@ -30,15 +30,15 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
     l_sup = None
     if len(sup_data) > 0:
         # Chuyển dữ liệu sang đúng device
-        original_samples = torch.stack(sup_data).to(device)
+        sup_data = torch.stack(sup_data).to(device)
         ages = torch.tensor(ages).float().to(device)
 
         # --- TẠO NHÃN GIẢ BẰNG PAIRED-VIEW CÓ ĐIỀU KIỆN ---
         with torch.no_grad():
             teacher_model.eval()
-            flipped_samples = torch.flip(original_samples, dims=[-1])
+            flipped_samples = torch.flip(sup_data, dims=[-1])
             
-            outputs_original = teacher_model(original_samples)
+            outputs_original = teacher_model(sup_data)
             outputs_flipped = teacher_model(flipped_samples)
             
             probs_original = F.softmax(outputs_original, dim=1)
