@@ -30,7 +30,7 @@ def _calculate_replay_loss_step2_quality_weights(replay_batch, student_model, te
     bằng reweighting theo chất lượng nhãn giả.
     """
     device = next(teacher_model.parameters()).device
-    original_samples = torch.stack([item.sample for item in replay_batch]).to(device)
+    original_samples = torch.stack([item for item in replay_batch]).to(device)
 
     # --- Bước 1: Tạo Nhãn giả (Vẫn dùng cách của RoTTA gốc để đảm bảo baseline) ---
     with torch.no_grad():
