@@ -29,6 +29,7 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
     
     l_sup = None
     if len(sup_data) > 0:
+        sup_data = torch.stack(sup_data).to(device)
         teacher_model.eval()
         teacher_logits = teacher_model(sup_data)
 
