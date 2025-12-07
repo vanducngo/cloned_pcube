@@ -48,7 +48,7 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
             conf_flipped, pred_flipped = probs_flipped.max(dim=1)
 
             # Lấy ngưỡng từ config
-            confidence_threshold = cfg.P_CUBE.REPLAY.PV_CONF_THRESHOLD
+            confidence_threshold = 0.7 #cfg.P_CUBE.REPLAY.PV_CONF_THRESHOLD
             
             consistent_mask = (pred_original == pred_flipped) & \
                             (conf_original > confidence_threshold) & \
