@@ -13,49 +13,49 @@ def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_mod
         sup_data = torch.stack(sup_data).to(device)
         ages = torch.tensor(ages).float().to(device)
         
-        # --- THAY ĐỔI 1: TẠO NHÃN GIẢ BẰNG PAIRED-VIEW ---
-        with torch.no_grad():
-            teacher_model.eval()
-            flipped_samples = torch.flip(sup_data, dims=[-1])
+        # # --- THAY ĐỔI 1: TẠO NHÃN GIẢ BẰNG PAIRED-VIEW ---
+        # with torch.no_grad():
+        #     teacher_model.eval()
+        #     flipped_samples = torch.flip(sup_data, dims=[-1])
             
-            # Lấy logits từ Teacher
-            outputs_original = teacher_model(sup_data)
-            outputs_flipped = teacher_model(flipped_samples)
+        #     # Lấy logits từ Teacher
+        #     outputs_original = teacher_model(sup_data)
+        #     outputs_flipped = teacher_model(flipped_samples)
             
-            probs_original = F.softmax(outputs_original, dim=1)
-            probs_flipped = F.softmax(outputs_flipped, dim=1)
+        #     probs_original = F.softmax(outputs_original, dim=1)
+        #     probs_flipped = F.softmax(outputs_flipped, dim=1)
             
-            # 1. Tính toán độ chắc chắn (confidence) và nhãn cứng cho cả hai
-            conf_original, pred_original = probs_original.max(dim=1)
-            conf_flipped, pred_flipped = probs_flipped.max(dim=1)
+        #     # 1. Tính toán độ chắc chắn (confidence) và nhãn cứng cho cả hai
+        #     conf_original, pred_original = probs_original.max(dim=1)
+        #     conf_flipped, pred_flipped = probs_flipped.max(dim=1)
 
-            # 2. Tạo mask cho những mẫu "nhất quán"
-            # Điều kiện: dự đoán nhãn cứng giống nhau VÀ cả hai đều phải đủ tự tin
-            confidence_threshold = 0.5 # Một siêu tham số mới cần tinh chỉnh
-            consistent_mask = (pred_original == pred_flipped) & \
-                            (conf_original > confidence_threshold) & \
-                            (conf_flipped > confidence_threshold)
+        #     # 2. Tạo mask cho những mẫu "nhất quán"
+        #     # Điều kiện: dự đoán nhãn cứng giống nhau VÀ cả hai đều phải đủ tự tin
+        #     confidence_threshold = 0.5 # Một siêu tham số mới cần tinh chỉnh
+        #     consistent_mask = (pred_original == pred_flipped) & \
+        #                     (conf_original > confidence_threshold) & \
+        #                     (conf_flipped > confidence_threshold)
             
-            # 3. Tạo nhãn giả cuối cùng
-            # Lấy trung bình cộng LOGITS cho các mẫu nhất quán
-            draft_logits_consistent = (outputs_original[consistent_mask] + outputs_flipped[consistent_mask]) / 2.0
+        #     # 3. Tạo nhãn giả cuối cùng
+        #     # Lấy trung bình cộng LOGITS cho các mẫu nhất quán
+        #     draft_logits_consistent = (outputs_original[consistent_mask] + outputs_flipped[consistent_mask]) / 2.0
 
-            # Với các mẫu không nhất quán, hãy chọn dự đoán có confidence cao hơn
-            draft_logits_inconsistent = torch.where(conf_original[~consistent_mask].unsqueeze(1) > conf_flipped[~consistent_mask].unsqueeze(1),
-                                                    outputs_original[~consistent_mask],
-                                                    outputs_flipped[~consistent_mask])
+        #     # Với các mẫu không nhất quán, hãy chọn dự đoán có confidence cao hơn
+        #     draft_logits_inconsistent = torch.where(conf_original[~consistent_mask].unsqueeze(1) > conf_flipped[~consistent_mask].unsqueeze(1),
+        #                                             outputs_original[~consistent_mask],
+        #                                             outputs_flipped[~consistent_mask])
             
-            # Tạo draft_logits cuối cùng để tương thích với code sau
-            draft_logits = torch.zeros_like(outputs_original)
-            draft_logits[consistent_mask] = draft_logits_consistent
-            draft_logits[~consistent_mask] = draft_logits_inconsistent
-        # -----------------------------------------------
+        #     # Tạo draft_logits cuối cùng để tương thích với code sau
+        #     draft_logits = torch.zeros_like(outputs_original)
+        #     draft_logits[consistent_mask] = draft_logits_consistent
+        #     draft_logits[~consistent_mask] = draft_logits_inconsistent
+        # # -----------------------------------------------
 
         strong_sup_aug = transform(sup_data)
-        # ema_sup_out = teacher_model(sup_data)
+        ema_sup_out = teacher_model(sup_data)
         stu_sup_out = student_model(strong_sup_aug)
         instance_weight = timeliness_reweighting(ages)
-        l_sup = (softmax_entropy(stu_sup_out, draft_logits.detach()) * instance_weight).mean()
+        l_sup = (softmax_entropy(stu_sup_out, ema_sup_out.detach()) * instance_weight).mean()
 
         print (f"Loss over time: {l_sup}")
 
