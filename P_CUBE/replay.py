@@ -23,61 +23,6 @@ def _calculate_replay_loss_rotta_like(sup_data, ages, transform, student_model, 
 
     return l_sup
 
-@torch.enable_grad()
-def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_model, cfg):
-    device = next(teacher_model.parameters()).device
-    
-    l_sup = None
-    if len(sup_data) > 0:
-        sup_data = torch.stack(sup_data).to(device)
-        teacher_model.eval()
-        teacher_logits = teacher_model(sup_data)
-
-        # Nhãn giả mềm là softmax của logits
-        y_draft = F.softmax(teacher_logits, dim=1)
-
-        with torch.no_grad():
-            # 2a: Tính Độ Chắc chắn (Certainty) bằng Entropy
-            entropies = -torch.sum(y_draft * torch.log(y_draft + 1e-8), dim=-1)
-
-            # 2b: Tính Độ Ổn định (Stability) bằng Augmentation Sensitivity
-            disagreement_scores = torch.zeros_like(entropies)
-
-            weak_augment_transform = get_weak_augment_transform(cfg)
-            num_aug_checks = cfg.P_CUBE.REPLAY.NUM_AUG_CHECKS
-
-            for _ in range(num_aug_checks):
-                augmented_samples = weak_augment_transform(sup_data)
-                probs_aug = F.softmax(teacher_model(augmented_samples), dim=-1)
-                
-                kl_div = torch.sum(y_draft * (torch.log(y_draft + 1e-8) - torch.log(probs_aug + 1e-8)), dim=-1)
-                disagreement_scores += kl_div
-
-    # --- Bước 3: Tính Trọng số Thích ứng (Vẫn giữ nguyên) ---
-    w_ent = cfg.P_CUBE.REPLAY.W_ENT
-    w_dis = cfg.P_CUBE.REPLAY.W_DIS
-    weight_temp = cfg.P_CUBE.REPLAY.WEIGHT_TEMP
-    
-    quality_penalty = (w_ent * entropies) + (w_dis * disagreement_scores)
-    weights = F.softmax(-quality_penalty / weight_temp, dim=0)
-    normalized_weights = weights
-
-    # --- Bước 4: Cập nhật Student với Strong Augmentation ---
-    student_model.train()
-    
-    strong_augment_transform = get_tta_transforms(cfg)
-    student_input = strong_augment_transform(sup_data)
-    
-    student_outputs = student_model(student_input)
-    
-    # Tính Symmetric Cross-Entropy (SCE) loss và áp dụng trọng số
-    individual_losses = symmetric_cross_entropy_loss(student_outputs, y_draft.detach(), reduction='none')
-    weighted_loss = torch.sum(normalized_weights * individual_losses.reshape(-1))
-    
-    print(f"Loss over time: {weighted_loss.item()}")
-    return weighted_loss
-
-
 def softmax_entropy(x, x_ema):
     return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
 
