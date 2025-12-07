@@ -24,63 +24,62 @@ def _calculate_replay_loss_rotta_like(sup_data, ages, transform, student_model, 
     return l_sup
 
 @torch.enable_grad()
-def _calculate_replay_loss_step2_quality_weights(replay_batch, student_model, teacher_model, cfg):
-    """
-    Phiên bản cải tiến: Giữ lại logic chung của RoTTA nhưng thay thế reweighting theo tuổi
-    bằng reweighting theo chất lượng nhãn giả.
-    """
+def _calculate_replay_loss(sup_data, ages, transform, student_model, teacher_model, cfg):
     device = next(teacher_model.parameters()).device
-    original_samples = torch.stack([item for item in replay_batch]).to(device)
+    
+    l_sup = None
+    if len(sup_data) > 0:
+        # Chuyển dữ liệu sang đúng device
+        original_samples = torch.stack(sup_data).to(device)
+        ages = torch.tensor(ages).float().to(device)
 
-    # --- Bước 1: Tạo Nhãn giả (Vẫn dùng cách của RoTTA gốc để đảm bảo baseline) ---
-    with torch.no_grad():
-        teacher_model.eval()
-        # Nhãn giả được tạo từ dự đoán của Teacher trên ảnh gốc
-        teacher_logits = teacher_model(original_samples)
-        y_draft_probs = F.softmax(teacher_logits, dim=1)
+        # --- TẠO NHÃN GIẢ BẰNG PAIRED-VIEW CÓ ĐIỀU KIỆN ---
+        with torch.no_grad():
+            teacher_model.eval()
+            flipped_samples = torch.flip(original_samples, dims=[-1])
+            
+            outputs_original = teacher_model(original_samples)
+            outputs_flipped = teacher_model(flipped_samples)
+            
+            probs_original = F.softmax(outputs_original, dim=1)
+            probs_flipped = F.softmax(outputs_flipped, dim=1)
 
-    # --- Bước 2: Đánh giá Chất lượng Nhãn giả (Logic mới) ---
-    with torch.no_grad():
-        # 2a: Tính Độ Chắc chắn (Certainty)
-        entropies = -torch.sum(y_draft_probs * torch.log(y_draft_probs + 1e-8), dim=-1)
-        
-        # 2b: Tính Độ Ổn định (Stability)
-        disagreement_scores = torch.zeros_like(entropies)
-        weak_augment_transform = get_weak_augment_transform(cfg)
-        num_aug_checks = cfg.P_CUBE.REPLAY.NUM_AUG_CHECKS
+            conf_original, pred_original = probs_original.max(dim=1)
+            conf_flipped, pred_flipped = probs_flipped.max(dim=1)
 
-        for _ in range(num_aug_checks):
-            augmented_samples = weak_augment_transform(original_samples)
-            probs_aug = F.softmax(teacher_model(augmented_samples), dim=-1)
-            kl_div = torch.sum(y_draft_probs * (torch.log(y_draft_probs + 1e-8) - torch.log(probs_aug + 1e-8)), dim=-1)
-            disagreement_scores += kl_div
-    
-    # --- Bước 3: Tính Trọng số Loss theo Chất lượng (Logic mới) ---
-    w_ent = cfg.P_CUBE.REPLAY.W_ENT
-    w_dis = cfg.P_CUBE.REPLAY.W_DIS
-    weight_temp = cfg.P_CUBE.REPLAY.WEIGHT_TEMP
-    
-    quality_penalty = (w_ent * entropies) + (w_dis * disagreement_scores)
-    weights = F.softmax(-quality_penalty / weight_temp, dim=0)
-    normalized_weights = weights
+            # Lấy ngưỡng từ config
+            confidence_threshold = cfg.P_CUBE.REPLAY.PV_CONF_THRESHOLD
+            
+            consistent_mask = (pred_original == pred_flipped) & \
+                            (conf_original > confidence_threshold) & \
+                            (conf_flipped > confidence_threshold)
 
-    # --- Bước 4: Cập nhật Student (Logic của RoTTA) ---
-    student_model.train()
-    
-    # Student vẫn học trên Strong Augmentation
-    strong_augment_transform = get_tta_transforms(cfg)
-    student_input = strong_augment_transform(original_samples)
-    student_outputs = student_model(student_input)
-    
-    # --- THAY ĐỔI CỐT LÕI: Áp dụng trọng số mới ---
-    # Sử dụng hàm loss gốc của RoTTA (softmax_entropy)
-    # nhưng thay thế instance_weight (theo tuổi) bằng normalized_weights (theo chất lượng)
-    individual_losses = softmax_entropy(student_outputs, teacher_logits.detach())
-    
-    weighted_loss = torch.sum(normalized_weights * individual_losses)
-    
-    print(f"Loss with Quality Weights: {weighted_loss.item()}")
-    return weighted_loss
+            draft_logits = torch.zeros_like(outputs_original)
+            
+            # Với các mẫu nhất quán: lấy trung bình logits
+            if consistent_mask.sum() > 0:
+                draft_logits[consistent_mask] = (outputs_original[consistent_mask] + outputs_flipped[consistent_mask]) / 2.0
+            
+            # Với các mẫu không nhất quán: chọn logits của dự đoán tự tin hơn
+            inconsistent_mask = ~consistent_mask
+            if inconsistent_mask.sum() > 0:
+                draft_logits[inconsistent_mask] = torch.where(
+                    conf_original[inconsistent_mask].unsqueeze(1) > conf_flipped[inconsistent_mask].unsqueeze(1),
+                    outputs_original[inconsistent_mask],
+                    outputs_flipped[inconsistent_mask]
+                )
+        # -----------------------------------------------------
+
+        strong_sup_aug = transform(sup_data)
+        # ema_sup_out = teacher_model(sup_data)
+        stu_sup_out = student_model(strong_sup_aug)
+        instance_weight = timeliness_reweighting(ages)
+        l_sup = (softmax_entropy(stu_sup_out, draft_logits.detach()) * instance_weight).mean()
+
+        print (f"Loss over time: {l_sup}")
+
+    return l_sup
+
 
 def softmax_entropy(x, x_ema):
     return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)

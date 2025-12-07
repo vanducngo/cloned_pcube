@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from P_CUBE.custom_transforms import get_tta_transforms
 from P_CUBE.features import get_features_from_model
-from P_CUBE.replay import _calculate_replay_loss_step2_quality_weights
+from P_CUBE.replay import _calculate_replay_loss
 from .filter.index import P_Cube_Filter
 from .memory.PCubeMemoryBank import PCubeMemoryBank
 
@@ -83,12 +83,11 @@ class P_CUBE(nn.Module):
         #                               teacher_model,
         #                               self.cfg)
 
-        # loss = _calculate_replay_loss_rotta_like(sup_data, 
-        #                               ages,
-        #                               self.transform,
-        #                               student_model, 
-        #                               teacher_model,
-        #                               self.cfg)
+        loss = _calculate_replay_loss(sup_data, 
+                                      ages,
+                                      self.transform,
+                                      student_model, 
+                                      teacher_model,
+                                      self.cfg)
 
-        loss = _calculate_replay_loss_step2_quality_weights(sup_data, student_model, teacher_model, self.cfg)
         return loss
