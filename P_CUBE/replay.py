@@ -19,7 +19,7 @@ def _calculate_replay_loss_rotta_like(sup_data, ages, transform, student_model, 
         instance_weight = timeliness_reweighting(ages)
         l_sup = (softmax_entropy(stu_sup_out, ema_sup_out.detach()) * instance_weight).mean()
 
-        print (f"Loss over time: {l_sup}")
+        # print (f"Loss over time: {l_sup}")
 
     return l_sup
 
