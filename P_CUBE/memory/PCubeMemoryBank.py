@@ -1,8 +1,9 @@
 import math
 import random
 from torch import nn
+import torch
 
-from .utils import calculate_stats_on_buffer, ema_update, kl_divergence
+from .utils import calculate_centroid_distance, calculate_centroids_from_buffer, calculate_stats_on_buffer, ema_update, ema_update_centroids, kl_divergence
 from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
@@ -29,48 +30,21 @@ class PCubeMemoryBank:
         self.updates_since_last_check = 0
         
         # Cho việc phát hiện thay đổi miền
-        self.stats_ema = {} # Thống kê dài hạn, được làm mịn
+        try:
+            if hasattr(model_architecture, 'fc'):
+                self.feature_dim = model_architecture.fc.in_features
+            elif hasattr(model_architecture, 'classifier'):
+                self.feature_dim = model_architecture.classifier.in_features
+            else: # Fallback
+                self.feature_dim = list(model_architecture.parameters())[-1].shape[1]
+        except:
+             # Fallback cứng nếu không tìm được
+            self.feature_dim = 2048 
+            print(f"Warning: Could not infer feature_dim. Defaulting to {self.feature_dim}")
+            
+        self.centroids_ema = None # Khởi tạo là None
         self.ema_momentum = cfg.P_CUBE.EMA_MOMENTUM
-        
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
-
-        # ==========================================================
-        # KHỐI DEBUG CHI TIẾT
-        # ==========================================================
-        print("\n--- DEBUGGING INSIDE PCubeMemoryBank __init__ ---")
-        print(f"Received model_architecture object of type: {type(model_architecture)}")
-        
-        self.target_layer_names_for_stats = []
-        normalization_keywords = ['BatchNorm', 'LayerNorm', 'BN', 'LN'] 
-        found_layers = False
-
-        print("Starting to iterate through model modules...")
-        for name, module in model_architecture.named_modules():
-            class_name = type(module).__name__
-            
-            # In ra thông tin của MỌI module để kiểm tra
-            print(f"  - Checking module: name='{name}', class_name='{class_name}'")
-            
-            # Kiểm tra từng keyword một cách tường minh
-            found_keyword = False
-            for keyword in normalization_keywords:
-                if keyword in class_name:
-                    print(f"    - MATCH FOUND! '{keyword}' is in '{class_name}'. Appending name: '{name}'")
-                    self.target_layer_names_for_stats.append(name)
-                    found_keyword = True
-                    found_layers = True
-                    break # Thoát vòng lặp keyword khi đã tìm thấy
-            
-            if not found_keyword:
-                print(f"    - No match found for '{class_name}'.")
-
-        print("Finished iterating.")
-        print("--- END DEBUGGING --- \n")
-        # ==========================================================
-
-        print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} normalization layers to monitor (by name).")
-        if self.target_layer_names_for_stats:
-            print(f"  - Example layers: {self.target_layer_names_for_stats[:3]}")
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
@@ -93,7 +67,7 @@ class PCubeMemoryBank:
         self.updates_since_last_check += len(clean_samples)
         if self.updates_since_last_check >= self.kl_check_interval:
             # Truyền model hiện tại vào để có thể tính stats
-            self._check_for_domain_shift(current_model)
+            self._check_for_domain_shift()
             self.updates_since_last_check = 0
 
     def _cleanup_expired_items(self):
@@ -107,51 +81,35 @@ class PCubeMemoryBank:
         if self.remove_instance(target_class, new_score):
             self.data[target_class].append(new_item)
             
-    def _check_for_domain_shift(self, current_model):
+    def _check_for_domain_shift(self):
         """
         Thực hiện logic phát hiện thay đổi miền và kích hoạt lão hóa cấp tốc.
         """
         if self.get_occupancy() < self.kl_check_interval:
             return
 
-        
-        # 1. Làm phẳng (flatten) self.data để có một danh sách các MemoryItem
-        all_items_in_buffer = [item for class_list in self.data for item in class_list]
+        print("Checking for domain shift (feature-based)...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        stats_snapshot = calculate_stats_on_buffer(
-            all_items_in_buffer, 
-            current_model, 
-            self.target_layer_names_for_stats # <--- Truyền vào list of strings
+        # 1. Tính tâm lớp tức thời từ bộ đệm
+        centroids_snapshot = calculate_centroids_from_buffer(
+            [item for sublist in self.data for item in sublist], 
+            self.num_classes, 
+            self.feature_dim, 
+            device
         )
-        
-        print(f"Checking for domain shift... - all_items_in_buffer: {all_items_in_buffer}")
-        
-        # 2. Truyền danh sách đã làm phẳng vào hàm tính toán
-        target_layers = [m for m in current_model.modules() if isinstance(m, (nn.BatchNorm2d, nn.LayerNorm))]
-        stats_snapshot = calculate_stats_on_buffer(all_items_in_buffer, current_model, target_layers)
-        # ----------------------
-        
-        if not self.stats_ema:
-            self.stats_ema = stats_snapshot
-            print(f'self.stats_ema: {self.stats_ema} ----- stats_ema: {stats_snapshot}')
+
+        # 2. Cập nhật và tính khoảng cách
+        if self.centroids_ema is None: # Khởi tạo lần đầu
+            self.centroids_ema = centroids_snapshot
             return 
         
-        divergence = kl_divergence(stats_snapshot, self.stats_ema)
-        self.stats_ema = ema_update(self.stats_ema, stats_snapshot, self.ema_momentum)
-        
-        # --- THÊM PHẦN DEBUGGING ---
-        self.kl_history_for_debug.append(divergence)
-        is_peak_flag = self.peak_detector.is_peak(divergence)
-        
-        # In ra các thông số quan trọng của detector
-        print(f"KL Divergence: {divergence:.6f} | Detector Mean: {self.peak_detector.mean:.6f} | Detector Std: {self.peak_detector.std:.6f} | Z-score: {abs(divergence - self.peak_detector.mean) / self.peak_detector.std if self.peak_detector.std > 0 else 0:.2f}")
-        
-        if is_peak_flag:
-            print("PEAK DETECTED!")
-            self._accelerated_aging()
+        distance = calculate_centroid_distance(centroids_snapshot, self.centroids_ema, distance_metric='l2')
+        self.centroids_ema = ema_update_centroids(self.centroids_ema, centroids_snapshot, self.ema_momentum)
 
-        if self.peak_detector.is_peak(divergence):
-            print(f"Domain shift detected! KL divergence peak: {divergence:.4f}. Triggering Accelerated Aging.")
+        # 3. Phát hiện đỉnh và hành động
+        if self.peak_detector.is_peak(distance):
+            print(f"Domain shift detected! Centroid distance peak: {distance:.4f}. Triggering Accelerated Aging.")
             self._accelerated_aging()
 
     def _accelerated_aging(self):

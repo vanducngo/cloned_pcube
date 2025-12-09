@@ -2,6 +2,107 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+@torch.no_grad()
+def calculate_centroids_from_buffer(buffer, num_classes, feature_dim, device):
+    """
+    Tính toán tâm lớp (centroids) từ các mẫu hiện có trong memory bank.
+
+    Args:
+        buffer (list[MemoryItem]): Danh sách các đối tượng MemoryItem.
+        num_classes (int): Tổng số lớp.
+        feature_dim (int): Số chiều của vector đặc trưng.
+        device: Thiết bị (GPU/CPU) để thực hiện tính toán.
+
+    Returns:
+        Tensor: Một tensor kích thước (num_classes, feature_dim) chứa các tâm lớp.
+    """
+    if not buffer:
+        return torch.zeros(num_classes, feature_dim, device=device)
+
+    # Khởi tạo tensor để lưu tổng và đếm
+    centroids_sum = torch.zeros(num_classes, feature_dim, device=device)
+    class_counts = torch.zeros(num_classes, device=device)
+
+    # Gom nhóm các đặc trưng theo lớp
+    for item in buffer:
+        label = item.pseudo_label
+        # Đảm bảo feature là tensor và trên đúng device
+        feature = item.feature.to(device) if isinstance(item.feature, torch.Tensor) else torch.tensor(item.feature, device=device)
+        centroids_sum[label] += feature
+        class_counts[label] += 1
+
+    # Tính trung bình để có tâm lớp
+    # Thêm 1e-8 để tránh chia cho 0 với các lớp không có mẫu
+    centroids_snapshot = centroids_sum / (class_counts.unsqueeze(1) + 1e-8)
+    
+    return centroids_snapshot.detach()
+
+def ema_update_centroids(old_centroids, new_centroids, momentum):
+    """
+    Cập nhật các tâm lớp dài hạn bằng EMA.
+
+    Args:
+        old_centroids (Tensor): Tâm lớp dài hạn từ bước trước (stats_ema).
+        new_centroids (Tensor): Tâm lớp tức thời mới (stats_snapshot).
+        momentum (float): Hệ số EMA.
+
+    Returns:
+        Tensor: Tâm lớp dài hạn đã được cập nhật.
+    """
+    if old_centroids is None or old_centroids.numel() == 0:
+        return new_centroids.clone()
+
+    # Cập nhật bằng EMA
+    updated_centroids = momentum * old_centroids + (1 - momentum) * new_centroids
+    return updated_centroids.detach()
+
+def calculate_centroid_distance(centroids_p, centroids_q, distance_metric='l2'):
+    """
+    Tính khoảng cách trung bình giữa hai bộ tâm lớp.
+
+    Args:
+        centroids_p (Tensor): Bộ tâm lớp P.
+        centroids_q (Tensor): Bộ tâm lớp Q.
+        distance_metric (str): 'l2' hoặc 'cosine'.
+
+    Returns:
+        float: Giá trị khoảng cách trung bình.
+    """
+    if centroids_p is None or centroids_q is None or centroids_p.numel() == 0 or centroids_q.numel() == 0:
+        return 0.0
+
+    if distance_metric == 'l2':
+        # Tính khoảng cách Euclidean L2 cho từng cặp tâm lớp
+        distances = torch.norm(centroids_p - centroids_q, p=2, dim=1)
+    elif distance_metric == 'cosine':
+        # Tính khoảng cách cosine
+        distances = 1 - F.cosine_similarity(centroids_p, centroids_q, dim=1)
+    else:
+        raise ValueError("Invalid distance metric")
+
+    # Chỉ tính trung bình trên các lớp có ít nhất một mẫu (tâm lớp khác 0)
+    # để tránh sai lệch do các lớp "trống"
+    valid_classes_mask = torch.norm(centroids_p, dim=1) > 0
+    if valid_classes_mask.sum() > 0:
+        return torch.mean(distances[valid_classes_mask]).item()
+    else:
+        return 0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ==============================================================================
 # HÀM 1: calculate_stats_on_buffer
 # ==============================================================================
