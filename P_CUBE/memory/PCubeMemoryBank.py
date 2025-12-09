@@ -41,7 +41,7 @@ class PCubeMemoryBank:
         print(f"Received model_architecture object of type: {type(model_architecture)}")
         
         self.target_layer_names_for_stats = []
-        normalization_keywords = ['BatchNorm', 'LayerNorm'] 
+        normalization_keywords = ['BatchNorm', 'LayerNorm', 'BN', 'LN'] 
         found_layers = False
 
         print("Starting to iterate through model modules...")
