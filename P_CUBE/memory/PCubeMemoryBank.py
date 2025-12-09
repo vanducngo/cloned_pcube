@@ -88,6 +88,7 @@ class PCubeMemoryBank:
         
         if not self.stats_ema:
             self.stats_ema = stats_snapshot
+            print(f'self.stats_ema: {self.stats_ema} ----- stats_ema: {stats_snapshot}')
             return 
         
         divergence = kl_divergence(stats_snapshot, self.stats_ema)
