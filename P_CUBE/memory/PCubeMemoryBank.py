@@ -76,10 +76,11 @@ class PCubeMemoryBank:
         if self.get_occupancy() < self.kl_check_interval:
             return
 
-        print("Checking for domain shift...")
         
         # 1. Làm phẳng (flatten) self.data để có một danh sách các MemoryItem
         all_items_in_buffer = [item for class_list in self.data for item in class_list]
+        
+        print(f"Checking for domain shift... - all_items_in_buffer: {all_items_in_buffer}")
         
         # 2. Truyền danh sách đã làm phẳng vào hàm tính toán
         target_layers = [m for m in current_model.modules() if isinstance(m, (nn.BatchNorm2d, nn.LayerNorm))]

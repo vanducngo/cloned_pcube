@@ -45,6 +45,7 @@ def calculate_stats_on_buffer(buffer, model, target_layers):
             var = torch.var(activation_tensor, dim=dims_to_reduce, unbiased=False)
         buffer_stats[name] = (mean.detach(), var.detach())
 
+    print(f'calculate_stats_on_buffer - Return: {buffer_stats}')
     return buffer_stats
 
 # ==============================================================================
