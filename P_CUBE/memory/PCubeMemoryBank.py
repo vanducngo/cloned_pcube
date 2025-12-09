@@ -14,6 +14,9 @@ class PCubeMemoryBank:
         self.lambda_t = cfg.P_CUBE.LAMBDA_T
         self.lambda_u = cfg.P_CUBE.LAMBDA_U
         self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
+        
+        # Debug
+        self.kl_history_for_debug = [] 
 
         print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={self.capacity}")
         
@@ -90,6 +93,17 @@ class PCubeMemoryBank:
         divergence = kl_divergence(stats_snapshot, self.stats_ema)
         self.stats_ema = ema_update(self.stats_ema, stats_snapshot, self.ema_momentum)
         
+        # --- THÊM PHẦN DEBUGGING ---
+        self.kl_history_for_debug.append(divergence)
+        is_peak_flag = self.peak_detector.is_peak(divergence)
+        
+        # In ra các thông số quan trọng của detector
+        print(f"KL Divergence: {divergence:.6f} | Detector Mean: {self.peak_detector.mean:.6f} | Detector Std: {self.peak_detector.std:.6f} | Z-score: {abs(divergence - self.peak_detector.mean) / self.peak_detector.std if self.peak_detector.std > 0 else 0:.2f}")
+        
+        if is_peak_flag:
+            print("PEAK DETECTED!")
+            self._accelerated_aging()
+
         if self.peak_detector.is_peak(divergence):
             print(f"Domain shift detected! KL divergence peak: {divergence:.4f}. Triggering Accelerated Aging.")
             self._accelerated_aging()
