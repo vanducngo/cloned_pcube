@@ -5,8 +5,6 @@ from torch import nn
 from .utils import calculate_stats_on_buffer, ema_update, kl_divergence
 from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
-from ..utils.bn_layers import RobustBN2d 
-
 
 class PCubeMemoryBank:
     def __init__(self, cfg, model_architecture):
