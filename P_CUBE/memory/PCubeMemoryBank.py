@@ -113,12 +113,16 @@ class PCubeMemoryBank:
             self._accelerated_aging()
 
     def _accelerated_aging(self):
-        """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
-        for class_list in self.data:
-            print(f'_accelerated_aging - class_list: {class_list}')
-            for item in class_list:
-                print(f'_accelerated_aging - item: {class_list}')
-                item.age *= self.acceleration_factor
+        # """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
+        # for class_list in self.data:
+        #     print(f'_accelerated_aging - class_list: {class_list}')
+        #     for item in class_list:
+        #         print(f'_accelerated_aging - item: {class_list}')
+        #         item.age *= self.acceleration_factor
+
+        # Xóa hết memory bank
+        print("--- ACTION: Purging the entire memory bank due to detected domain shift. ---")
+        self.data = [[] for _ in range(self.num_classes)]
     
     # =========================================================
     # CÁC HÀM CŨ TỪ CSTU (ĐÃ ĐƯỢC TÍCH HỢP HOẶC GIỮ NGUYÊN)
