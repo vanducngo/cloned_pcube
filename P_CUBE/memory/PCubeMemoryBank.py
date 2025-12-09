@@ -39,6 +39,8 @@ class PCubeMemoryBank:
         for name, module in model_architecture.named_modules():
             # Lấy tên của class, ví dụ: "BatchNorm2d", "RobustBN2d", "LayerNorm"
             class_name = type(module).__name__
+
+            print(f'Classname: {class_name}')
             
             # Kiểm tra xem tên class có chứa bất kỳ từ khóa nào không
             if any(keyword in class_name for keyword in normalization_keywords):
