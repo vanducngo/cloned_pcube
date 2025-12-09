@@ -33,7 +33,7 @@ class PCubeMemoryBank:
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
-        self._cleanup_expired_items()
+        # self._cleanup_expired_items()
 
         # --- Bước 2: Thêm các mẫu sạch mới vào (Quản lý Vi mô) ---
         for i in range(len(clean_samples)):
@@ -49,11 +49,11 @@ class PCubeMemoryBank:
             self.add_age()
         
         # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
-        # self.updates_since_last_check += len(clean_samples)
-        # if self.updates_since_last_check >= self.kl_check_interval:
-        #     # Truyền model hiện tại vào để có thể tính stats
-        #     self._check_for_domain_shift(current_model)
-        #     self.updates_since_last_check = 0
+        self.updates_since_last_check += len(clean_samples)
+        if self.updates_since_last_check >= self.kl_check_interval:
+            # Truyền model hiện tại vào để có thể tính stats
+            self._check_for_domain_shift(current_model)
+            self.updates_since_last_check = 0
 
     def _cleanup_expired_items(self):
         """Loại bỏ các mẫu có tuổi vượt quá MAX_AGE."""
