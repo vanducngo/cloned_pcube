@@ -34,14 +34,39 @@ class PCubeMemoryBank:
         
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
+        # ==========================================================
+        # KHỐI DEBUG CHI TIẾT
+        # ==========================================================
+        print("\n--- DEBUGGING INSIDE PCubeMemoryBank __init__ ---")
+        print(f"Received model_architecture object of type: {type(model_architecture)}")
+        
         self.target_layer_names_for_stats = []
         normalization_keywords = ['BatchNorm', 'LayerNorm'] 
+        found_layers = False
 
+        print("Starting to iterate through model modules...")
         for name, module in model_architecture.named_modules():
             class_name = type(module).__name__
             
-            if any(keyword in class_name for keyword in normalization_keywords):
-                self.target_layer_names_for_stats.append(name)
+            # In ra thông tin của MỌI module để kiểm tra
+            print(f"  - Checking module: name='{name}', class_name='{class_name}'")
+            
+            # Kiểm tra từng keyword một cách tường minh
+            found_keyword = False
+            for keyword in normalization_keywords:
+                if keyword in class_name:
+                    print(f"    - MATCH FOUND! '{keyword}' is in '{class_name}'. Appending name: '{name}'")
+                    self.target_layer_names_for_stats.append(name)
+                    found_keyword = True
+                    found_layers = True
+                    break # Thoát vòng lặp keyword khi đã tìm thấy
+            
+            if not found_keyword:
+                print(f"    - No match found for '{class_name}'.")
+
+        print("Finished iterating.")
+        print("--- END DEBUGGING --- \n")
+        # ==========================================================
 
         print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} normalization layers to monitor (by name).")
         if self.target_layer_names_for_stats:
