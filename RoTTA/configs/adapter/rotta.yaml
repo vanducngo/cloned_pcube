@@ -36,7 +36,7 @@ P_CUBE:
   # --- Siêu tham số cho Giai đoạn 2: Memory Bank ---
   BATCH_SIZE: 64
   CAPACITY: 64             # Kích thước bộ đệm
-  MAX_AGE: 512             # Tuổi thọ tối đa (ví dụ: 3 * capacity)
+  MAX_AGE: 1024             # Tuổi thọ tối đa (ví dụ: 3 * capacity)
   ACCELERATION_FACTOR: 10  # Hệ số lão hóa cấp tốc
   KL_CHECK_INTERVAL: 64    # Tần suất kiểm tra thay đổi miền
   KL_THRESHOLD: 5.0        # Ngưỡng KL-divergence để phát hiện đỉnh
