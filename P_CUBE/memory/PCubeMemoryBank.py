@@ -33,7 +33,7 @@ class PCubeMemoryBank:
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
-        # self._cleanup_expired_items()
+        self._cleanup_expired_items()
 
         # --- Bước 2: Thêm các mẫu sạch mới vào (Quản lý Vi mô) ---
         for i in range(len(clean_samples)):
