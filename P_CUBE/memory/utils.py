@@ -21,8 +21,25 @@ def calculate_stats_on_buffer(buffer, model, target_layer_names):
 
     def get_activation_hook(name):
         def hook(module, input, output):
-            # Với BN, input[0] là tensor activation. Với LN, output là tensor.
-            activations[name] = input[0] if isinstance(module, nn.BatchNorm2d) else output
+            # Lấy tên class của module hiện tại
+            class_name = type(module).__name__
+            
+            # --- LOGIC MỚI ĐỂ XÁC ĐỊNH LOẠI LỚP ---
+            # Ưu tiên các lớp có chứa "BatchNorm" trong tên
+            if 'BatchNorm' in class_name or 'BN' in class_name:
+                # Đối với tất cả các loại BatchNorm (BN2d, RobustBN2d, ...),
+                # chúng ta luôn muốn lấy tensor đầu vào.
+                activations[name] = input[0]
+            # Nếu không, kiểm tra xem có phải LayerNorm không
+            elif isinstance(module, nn.LayerNorm):
+                # Đối với LayerNorm, chúng ta muốn lấy tensor đầu ra.
+                activations[name] = output
+            else:
+                # Một trường hợp dự phòng: nếu là một lớp lạ,
+                # tạm thời lấy đầu ra. Cần kiểm tra kỹ nếu có kiến trúc mới.
+                activations[name] = output
+            # ----------------------------------------
+                
         return hook
 
     for name, layer in model.named_modules():
