@@ -5,6 +5,8 @@ from torch import nn
 from .utils import calculate_stats_on_buffer, ema_update, kl_divergence
 from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
+from ..utils.bn_layers import RobustBN2d 
+
 
 class PCubeMemoryBank:
     def __init__(self, cfg, model_architecture):
@@ -34,17 +36,19 @@ class PCubeMemoryBank:
         
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
-        self.target_layer_names_for_stats = [
-            name for name, module in model_architecture.named_modules() 
-            if isinstance(module, (nn.BatchNorm2d, nn.LayerNorm))
-        ]
+        self.target_layer_names_for_stats = []
+        normalization_keywords = ['BatchNorm', 'LayerNorm'] 
+        for name, module in model_architecture.named_modules():
+            # Lấy tên của class, ví dụ: "BatchNorm2d", "RobustBN2d", "LayerNorm"
+            class_name = type(module).__name__
+            
+            # Kiểm tra xem tên class có chứa bất kỳ từ khóa nào không
+            if any(keyword in class_name for keyword in normalization_keywords):
+                self.target_layer_names_for_stats.append(name)
 
-        print("--- Inside PCubeMemoryBank __init__ ---")
-        print("Received model_architecture type:", type(model_architecture))
-        # In ra toàn bộ kiến trúc để xem
-        print(model_architecture) 
-
-        print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} BN/LN layer names to monitor.")
+        print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} normalization layers to monitor (by name).")
+        if self.target_layer_names_for_stats:
+            print(f"  - Example layers: {self.target_layer_names_for_stats[:3]}")
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
