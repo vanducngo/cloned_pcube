@@ -115,7 +115,9 @@ class PCubeMemoryBank:
     def _accelerated_aging(self):
         """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
         for class_list in self.data:
+            print(f'_accelerated_aging - class_list: {class_list}')
             for item in class_list:
+                print(f'_accelerated_aging - item: {class_list}')
                 item.age *= self.acceleration_factor
     
     # =========================================================
