@@ -6,7 +6,7 @@ import numpy as np
 # HÀM 1: calculate_stats_on_buffer
 # ==============================================================================
 @torch.no_grad()
-def calculate_stats_on_buffer(buffer, model, target_layers):
+def calculate_stats_on_buffer(buffer, model, target_layer_names):
     """
     Tính toán mean và variance của các lớp BN/LN trên toàn bộ buffer.
     """
@@ -26,9 +26,15 @@ def calculate_stats_on_buffer(buffer, model, target_layers):
         return hook
 
     for name, layer in model.named_modules():
-        if layer in target_layers:
+        # So sánh TÊN thay vì đối tượng
+        if name in target_layer_names:
+            # Đăng ký hook vào lớp `layer` của `model` hiện tại
             hooks.append(layer.register_forward_hook(get_activation_hook(name)))
 
+    if not hooks:
+        print("Warning: No hooks were registered in calculate_stats_on_buffer. Check target_layer_names.")
+        return {}
+    
     model(all_samples)
 
     for hook in hooks:
@@ -45,7 +51,6 @@ def calculate_stats_on_buffer(buffer, model, target_layers):
             var = torch.var(activation_tensor, dim=dims_to_reduce, unbiased=False)
         buffer_stats[name] = (mean.detach(), var.detach())
 
-    print(f'calculate_stats_on_buffer - Return: {buffer_stats}')
     return buffer_stats
 
 # ==============================================================================

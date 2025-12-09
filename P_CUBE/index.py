@@ -26,7 +26,7 @@ class P_CUBE(nn.Module):
         
         # Giai đoạn 2: Memory Bank
         # Truyền toàn bộ cfg vào để MemoryBank tự lấy các siêu tham số cần thiết
-        self.memory = PCubeMemoryBank(cfg=cfg)
+        self.memory = PCubeMemoryBank(cfg=cfg, model_architecture=model_architecture)
 
         self.transform = get_tta_transforms(cfg)
         

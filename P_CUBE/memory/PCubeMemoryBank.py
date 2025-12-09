@@ -7,7 +7,7 @@ from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
 class PCubeMemoryBank:
-    def __init__(self, cfg):
+    def __init__(self, cfg, model_architecture):
         self.capacity = cfg.P_CUBE.CAPACITY
         self.num_classes = cfg.CORRUPTION.NUM_CLASS
         self.per_class_capacity = self.capacity / self.num_classes
@@ -33,6 +33,12 @@ class PCubeMemoryBank:
         self.ema_momentum = cfg.P_CUBE.EMA_MOMENTUM
         
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
+
+        self.target_layer_names_for_stats = [
+            name for name, module in model_architecture.named_modules() 
+            if isinstance(module, (nn.BatchNorm2d, nn.LayerNorm))
+        ]
+        print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} BN/LN layer names to monitor.")
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
@@ -79,6 +85,12 @@ class PCubeMemoryBank:
         
         # 1. Làm phẳng (flatten) self.data để có một danh sách các MemoryItem
         all_items_in_buffer = [item for class_list in self.data for item in class_list]
+
+        stats_snapshot = calculate_stats_on_buffer(
+            all_items_in_buffer, 
+            current_model, 
+            self.target_layer_names_for_stats # <--- Truyền vào list of strings
+        )
         
         print(f"Checking for domain shift... - all_items_in_buffer: {all_items_in_buffer}")
         
