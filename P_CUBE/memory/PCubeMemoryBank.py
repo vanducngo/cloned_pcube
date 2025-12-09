@@ -38,6 +38,12 @@ class PCubeMemoryBank:
             name for name, module in model_architecture.named_modules() 
             if isinstance(module, (nn.BatchNorm2d, nn.LayerNorm))
         ]
+
+        print("--- Inside PCubeMemoryBank __init__ ---")
+        print("Received model_architecture type:", type(model_architecture))
+        # In ra toàn bộ kiến trúc để xem
+        print(model_architecture) 
+
         print(f"MemoryBank: Found {len(self.target_layer_names_for_stats)} BN/LN layer names to monitor.")
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
