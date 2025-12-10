@@ -88,7 +88,6 @@ class PCubeMemoryBank:
         if self.get_occupancy() < self.kl_check_interval:
             return
 
-        print("Checking for domain shift (feature-based)...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # 1. Tính tâm lớp tức thời từ bộ đệm
@@ -115,9 +114,7 @@ class PCubeMemoryBank:
     def _accelerated_aging(self):
         # """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
         for class_list in self.data:
-            print(f'_accelerated_aging - class_list: {class_list}')
             for item in class_list:
-                print(f'_accelerated_aging - item: {class_list}')
                 item.age *= self.acceleration_factor
 
     def get_occupancy(self):
