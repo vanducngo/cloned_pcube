@@ -64,11 +64,11 @@ class PCubeMemoryBank:
             self.add_age()
         
         # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
-        self.updates_since_last_check += len(clean_samples)
-        if self.updates_since_last_check >= self.kl_check_interval:
-            # Truyền model hiện tại vào để có thể tính stats
-            self._check_for_domain_shift()
-            self.updates_since_last_check = 0
+        # self.updates_since_last_check += len(clean_samples)
+        # if self.updates_since_last_check >= self.kl_check_interval:
+        #     # Truyền model hiện tại vào để có thể tính stats
+        #     self._check_for_domain_shift()
+        #     self.updates_since_last_check = 0
 
     def _cleanup_expired_items(self):
         """Loại bỏ các mẫu có tuổi vượt quá MAX_AGE."""
