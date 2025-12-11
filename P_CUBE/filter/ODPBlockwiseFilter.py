@@ -20,7 +20,6 @@ class ODPBlockwiseFilter:
         self.pruning_ratio = pruning_ratio
         self.threshold = threshold
         self.quantile = 0.85
-        self.adaptive = (threshold is None) # Tự động xác định chế độ thích ứng
         
         # Bước 1: Tìm và lưu lại TÊN của các khối có thể phân tích (ví dụ: các khối Residual)
         self.prunable_block_names = self._find_prunable_block_names(model_architecture)
@@ -142,15 +141,11 @@ class ODPBlockwiseFilter:
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
 
         # Xác định ngưỡng lọc
-        if self.adaptive:
             # Ngưỡng thích ứng: tính toán dựa trên phân vị của batch hiện tại
-            if final_odp_scores.numel() > 0:
-                current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-            else:
-                current_threshold = float('inf') # Nếu không có điểm nào, cho qua tất cả
+        if final_odp_scores.numel() > 0:
+            current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
         else:
-            # Ngưỡng cứng: sử dụng giá trị đã định nghĩa
-            current_threshold = self.threshold
+            current_threshold = float('inf') # Nếu không có điểm nào, cho qua tất cả
         
         is_stable_mask = (final_odp_scores < current_threshold)
         
