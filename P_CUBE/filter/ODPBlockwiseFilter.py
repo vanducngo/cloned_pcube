@@ -40,7 +40,7 @@ class ODPBlockwiseFilter:
         block_names = []
         for name, module in model.named_modules():
             # Sử dụng cách nhận diện chính xác và an toàn
-            if type(module).__name__ in ["BasicBlock", "Bottleneck"]:
+            if type(module).__name__ in ["BasicBlock", "Bottleneck", "ResNeXtBottleneck"]:
                 block_names.append(name)
         return block_names
 
