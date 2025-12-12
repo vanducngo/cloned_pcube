@@ -22,6 +22,12 @@ class ODPBlockwiseFilter:
         self.quantile = 0.85
         
         # Bước 1: Tìm và lưu lại TÊN của các khối có thể phân tích (ví dụ: các khối Residual)
+        print("\n--- ARCHITECTURE DEBUG ---")
+        for name, module in base_model.named_modules():
+            # In ra tên module và tên class của nó
+            print(f"Name: {name:<50} | Class: {type(module).__name__}")
+        print("--- END ARCHITECTURE DEBUG ---\n")
+
         self.prunable_block_names = self._find_prunable_block_names(model_architecture)
         print(f"ODPFilter: Found {len(self.prunable_block_names)} prunable blocks to monitor: {self.prunable_block_names}")
         
