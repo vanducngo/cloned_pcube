@@ -23,7 +23,7 @@ class ODPBlockwiseFilter:
         
         # Bước 1: Tìm và lưu lại TÊN của các khối có thể phân tích (ví dụ: các khối Residual)
         print("\n--- ARCHITECTURE DEBUG ---")
-        for name, module in base_model.named_modules():
+        for name, module in model_architecture.named_modules():
             # In ra tên module và tên class của nó
             print(f"Name: {name:<50} | Class: {type(module).__name__}")
         print("--- END ARCHITECTURE DEBUG ---\n")
