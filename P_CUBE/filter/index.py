@@ -36,17 +36,17 @@ class P_Cube_Filter:
         num_after_prev_gate = num_initial_samples
 
         # --- Cổng 1: Lọc Ổn định (ODP) ---
-        # stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
-        # final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
+        stable_mask, _ = self.odp_filter.check_batch(batch_samples, current_model)
+        final_mask &= stable_mask # Dùng phép AND logic để cập nhật mask
         
-        # num_after_gate1 = final_mask.sum().item()
-        # print(f"Gate 1 (ODP): {num_after_gate1}/{num_after_prev_gate} samples passed.")
-        # num_after_prev_gate = num_after_gate1
+        num_after_gate1 = final_mask.sum().item()
+        print(f"Gate 1 (ODP): {num_after_gate1}/{num_after_prev_gate} samples passed.")
+        num_after_prev_gate = num_after_gate1
         
-        # if num_after_gate1 == 0:
-        #     # Nếu không có mẫu nào còn lại, thoát sớm để tiết kiệm tính toán
-        #     print("P-CUBE Filter: 0 samples passed after ODP filter.")
-        #     return final_mask
+        if num_after_gate1 == 0:
+            # Nếu không có mẫu nào còn lại, thoát sớm để tiết kiệm tính toán
+            print("P-CUBE Filter: 0 samples passed after ODP filter.")
+            return final_mask
         
         # --- Cổng 2: Lọc Nhất quán ---
         # samples_to_check_consistency = batch_samples[final_mask]
