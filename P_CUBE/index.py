@@ -62,8 +62,6 @@ class P_CUBE(nn.Module):
                                                  clean_entropies,
                                                  teacher_model)
             
-            return len(clean_samples)
-
     @torch.enable_grad()
     def adapt_from_memory(self, student_model, teacher_model):
         """
