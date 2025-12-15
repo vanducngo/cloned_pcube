@@ -32,10 +32,11 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
         
         # --- BƯỚC 2: BACKGROUND PROCESSING ---
         # Lọc và Cập nhật Memory Bank (không cần gradient)
-        self.p_cube.process_and_fill_memory(batch_data, self.model_ema)
+        numberOfSamplePass = self.p_cube.process_and_fill_memory(batch_data, self.model_ema)
         
         # --- BƯỚC 3: ADAPT ĐỊNH KỲ (HỌC TỪ BỘ NHỚ) ---
-        self.updates_since_last_adapt += len(batch_data)
+        print(f'Sample pass: {numberOfSamplePass}/{len(batch_data)}')
+        self.updates_since_last_adapt += len(numberOfSamplePass)
         # TODO: Kế thừa RoTTA, check update sau `update_frequency` mẫu
         # => Xem xét thử nghiệm chỉ update sau `update_frequency` của "Mẫu đã qua bộ LỌC => Giảm số lượng update model"
         if self.updates_since_last_adapt >= self.update_frequency:
