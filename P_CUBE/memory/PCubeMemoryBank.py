@@ -87,7 +87,7 @@ class PCubeMemoryBank:
 
             print(f"Aging Speed for current batch: {aging_speed}")
             
-            # Cập nhật EMA entropy
+            # Cập nhật EMA entropy 0.99
             self.ema_entropy = self.alpha_entropy * self.ema_entropy + (1 - self.alpha_entropy) * current_batch_entropy
 
         for i in range(len(clean_samples)):
