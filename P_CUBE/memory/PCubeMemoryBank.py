@@ -14,13 +14,14 @@ class PCubeMemoryBank:
         self.per_class_capacity = self.capacity / self.num_classes
         self.lambda_t = cfg.P_CUBE.LAMBDA_T
         self.lambda_u = cfg.P_CUBE.LAMBDA_U
+        
         self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
 
         self.use_aware_score = False
         self.use_adaptive_aging = True
         self.age_factor_bonus = 10
         self.base_aging_speed = 1
-        self.lambda_d = 0.5
+        self.lambda_d = 2
 
         # Nhiệt độ (temperature) T để kiểm soát độ nhọn của phân phối
         # T > 1 -> mềm hơn, T < 1 -> nhọn hơn
@@ -65,16 +66,24 @@ class PCubeMemoryBank:
         # self._cleanup_expired_items()
 
         # --- Bước 2: Thêm các mẫu sạch mới vào (Quản lý Vi mô) ---
-
         if self.use_adaptive_aging:
             current_batch_entropy = clean_entropies.mean().item()
+            current_batch_std = clean_entropies.std().item()
             
             if self.ema_entropy == 0.0: # Khởi tạo lần đầu
                 self.ema_entropy = current_batch_entropy
-        
-            drift_signal = (current_batch_entropy - self.ema_entropy) / (self.ema_entropy + 1e-6)
+
+            batch_size = len(clean_entropies)
+            ref_bs = 64
+            
+            # Giảm ảnh hưởng của back size nhỏ, nếu qua bộ lọc, làm clean samples còn rất nhỏ
+            confidence = min(1.0, batch_size / ref_bs)
+            
             aging_speed = self.base_aging_speed
-            aging_speed += self.age_factor_bonus * max(0, drift_signal)
+
+            drift_signal = ((current_batch_entropy - self.ema_entropy) / (self.ema_entropy + 1e-6)) * (1 + torch.tanh(torch.tensor(current_batch_std)).item())
+            
+            aging_speed += confidence * self.age_factor_bonus * max(0, drift_signal)
 
             print(f"Aging Speed for current batch: {aging_speed}")
             
