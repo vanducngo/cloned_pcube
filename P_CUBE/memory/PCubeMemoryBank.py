@@ -110,7 +110,7 @@ class PCubeMemoryBank:
             current_softmax_dist = self._calculate_softmax_dist()
             target_class = new_item.pseudo_label
             new_score = self.heuristic_score_v2(age=0, uncertainty=new_item.uncertainty, softmax_dist = current_softmax_dist, cls=target_class)
-            if self.remove_instance_v2(new_score, current_softmax_dist):
+            if self.remove_instance_v2(target_class, new_score, current_softmax_dist):
                 self.data[target_class].append(new_item)
         else:
             target_class = new_item.pseudo_label
