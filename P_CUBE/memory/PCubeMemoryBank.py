@@ -18,7 +18,7 @@ class PCubeMemoryBank:
 
         self.use_aware_score = True
         self.use_adaptive_aging = True
-        self.age_factor_bonus = 10
+        self.age_factor_bonus = 20
         self.base_aging_speed = 1
         self.lambda_d = 0.5
 
