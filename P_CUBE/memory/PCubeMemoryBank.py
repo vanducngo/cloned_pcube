@@ -107,7 +107,6 @@ class PCubeMemoryBank:
 
     def _manage_and_add_single_item(self, new_item):
         if self.use_aware_score:
-            print(f'\n-> Runing with use_aware_score enable')
             current_softmax_dist = self._calculate_softmax_dist()
             target_class = new_item.pseudo_label
             new_score = self.heuristic_score_v2(age=0, uncertainty=new_item.uncertainty, softmax_dist = current_softmax_dist, cls=target_class)
@@ -252,12 +251,12 @@ class PCubeMemoryBank:
         return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
 
     def heuristic_score_v2(self, age, uncertainty, softmax_dist, cls):
-        original_score = self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
+        timelineness_score = self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
+        uncertainty_score = self.lambda_u * uncertainty / math.log(self.num_classes)
+        penalty_score = self.lambda_d + softmax_dist[cls].item()
 
-        penalty = softmax_dist[cls].item()
-        pendaty_score += self.lambda_d * penalty
-
-        return original_score + pendaty_score
+        print(f'\n-> Runing with use_aware_score enable: \n-timelineness_score:{timelineness_score}\n-uncertainty_score:{uncertainty_score}\n-penalty_score:{penalty_score}')
+        return timelineness_score + uncertainty_score + penalty_score
 
     def add_age(self, aging_speed):
         for class_list in self.data:
