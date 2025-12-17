@@ -16,7 +16,7 @@ class PCubeMemoryBank:
         self.lambda_u = cfg.P_CUBE.LAMBDA_U
         self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
 
-        self.use_aware_score = True
+        self.use_aware_score = False
         self.use_adaptive_aging = True
         self.age_factor_bonus = 10
         self.base_aging_speed = 1
