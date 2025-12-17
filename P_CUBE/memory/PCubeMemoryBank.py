@@ -15,7 +15,17 @@ class PCubeMemoryBank:
         self.lambda_t = cfg.P_CUBE.LAMBDA_T
         self.lambda_u = cfg.P_CUBE.LAMBDA_U
         self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
-        
+
+        self.use_aware_score = True
+        self.use_adaptive_aging = True
+        self.age_factor_bonus = 10
+        self.base_aging_speed = 1
+        self.lambda_d = 0.5
+
+        # Khởi tạo một biến để theo dõi entropy
+        self.ema_entropy = 0.0
+        self.alpha_entropy = 0.99 # Hệ số EMA cho entropy
+
         # Debug
         self.kl_history_for_debug = [] 
 
@@ -61,7 +71,7 @@ class PCubeMemoryBank:
 
             self._manage_and_add_single_item(new_item)
             # --- Bước 3: Cập nhật Trạng thái Chung ---
-            self.add_age()
+            self.add_age(clean_entropies)
         
         # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
         # self.updates_since_last_check += len(clean_samples)
@@ -180,10 +190,26 @@ class PCubeMemoryBank:
         return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
 
 
-    def add_age(self):
+    def add_age(self, clean_entropies):
+        
+        if self.use_adaptive_aging:
+            current_batch_entropy = clean_entropies.mean().item()
+            
+            if self.ema_entropy == 0.0: # Khởi tạo lần đầu
+                self.ema_entropy = current_batch_entropy
+        
+            drift_signal = (current_batch_entropy - self.ema_entropy) / (self.ema_entropy + 1e-6)
+            aging_speed = self.base_aging_speed
+            aging_speed += self.age_factor_bonus * max(0, drift_signal)
+
+            print(f"Aging Speed for current batch: {aging_speed}")
+            
+            # Cập nhật EMA entropy
+            self.ema_entropy = self.alpha_entropy * self.ema_entropy + (1 - self.alpha_entropy) * current_batch_entropy
+
         for class_list in self.data:
             for item in class_list:
-                item.increase_age()
+                item.increase_age(aging_speed)
         return
                 
     def get_replay_batch(self, batch_size):
