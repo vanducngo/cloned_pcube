@@ -255,7 +255,6 @@ class PCubeMemoryBank:
         uncertainty_score = self.lambda_u * uncertainty / math.log(self.num_classes)
         penalty_score = self.lambda_d * softmax_dist[cls].item()
 
-        print(f'\n-> Runing with use_aware_score enable: \n-timelineness_score:{timelineness_score}\n-uncertainty_score:{uncertainty_score}\n-penalty_score:{penalty_score}')
         return timelineness_score + uncertainty_score + penalty_score
 
     def add_age(self, aging_speed):
