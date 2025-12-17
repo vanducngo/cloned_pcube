@@ -253,7 +253,9 @@ class PCubeMemoryBank:
     def heuristic_score_v2(self, age, uncertainty, softmax_dist, cls):
         timelineness_score = self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
         uncertainty_score = self.lambda_u * uncertainty / math.log(self.num_classes)
-        penalty_score = self.lambda_d + softmax_dist[cls].item()
+        penalty_score = self.lambda_d * softmax_dist[cls].item()
+
+        print(f'\n-> Runing with use_aware_score enable: \n-timelineness_score:{timelineness_score}\n-uncertainty_score:{uncertainty_score}\n-penalty_score:{penalty_score}')
         return timelineness_score + uncertainty_score + penalty_score
 
     def add_age(self, aging_speed):
