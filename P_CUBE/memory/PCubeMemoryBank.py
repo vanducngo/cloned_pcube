@@ -18,9 +18,13 @@ class PCubeMemoryBank:
 
         self.use_aware_score = True
         self.use_adaptive_aging = True
-        self.age_factor_bonus = 20
+        self.age_factor_bonus = 10
         self.base_aging_speed = 1
         self.lambda_d = 0.5
+
+        # Nhiệt độ (temperature) T để kiểm soát độ nhọn của phân phối
+        # T > 1 -> mềm hơn, T < 1 -> nhọn hơn
+        self.sofmax_dist_temperature = 2
 
         # Khởi tạo một biến để theo dõi entropy
         self.ema_entropy = 0.0
@@ -102,10 +106,18 @@ class PCubeMemoryBank:
             self.data[i] = [item for item in self.data[i] if item.age <= self.max_age]
 
     def _manage_and_add_single_item(self, new_item):
-        target_class = new_item.pseudo_label
-        new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
-        if self.remove_instance(target_class, new_score):
-            self.data[target_class].append(new_item)
+        if self.use_aware_score:
+            print(f'\n-> Runing with use_aware_score enable')
+            current_softmax_dist = self._calculate_softmax_dist()
+            target_class = new_item.pseudo_label
+            new_score = self.heuristic_score_v2(age=0, uncertainty=new_item.uncertainty, softmax_dist = current_softmax_dist, cls=target_class)
+            if self.remove_instance_v2(new_score, current_softmax_dist):
+                self.data[target_class].append(new_item)
+        else:
+            target_class = new_item.pseudo_label
+            new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
+            if self.remove_instance(target_class, new_score):
+                self.data[target_class].append(new_item)
             
     def _check_for_domain_shift(self):
         """
@@ -168,6 +180,33 @@ class PCubeMemoryBank:
                 return self.remove_from_classes(majority_classes, score)
         else:
             return self.remove_from_classes([cls], score)
+        
+    def remove_instance_v2(self, score, current_softmax_dist):
+        majority_classes = self.get_all_classes()
+        return self.remove_from_classes_v2(majority_classes, score, current_softmax_dist)
+    
+    def remove_from_classes_v2(self, classes: list[int], score_base, current_softmax_dist):
+        max_class = None
+        max_index = None
+        max_score = None
+        for cls in classes:
+            for idx, item in enumerate(self.data[cls]):
+                uncertainty = item.uncertainty
+                age = item.age
+                score = self.heuristic_score_v2(age=age, uncertainty=uncertainty, softmax_dist=current_softmax_dist, cls=cls)
+                if max_score is None or score >= max_score:
+                    max_score = score
+                    max_index = idx
+                    max_class = cls
+
+        if max_class is not None:
+            if max_score > score_base:
+                self.data[max_class].pop(max_index)
+                return True
+            else:
+                return False
+        else:
+            return True
 
     def remove_from_classes(self, classes: list[int], score_base):
         max_class = None
@@ -201,10 +240,24 @@ class PCubeMemoryBank:
                 classes.append(i)
 
         return classes
+    
+    def get_all_classes(self):
+        classes = []
+        for cls, _ in enumerate(self.data):
+            classes.append(cls)
+
+        return classes
 
     def heuristic_score(self, age, uncertainty):
         return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
 
+    def heuristic_score_v2(self, age, uncertainty, softmax_dist, cls):
+        original_score = self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
+
+        penalty = softmax_dist[cls].item()
+        pendaty_score += self.lambda_d * penalty
+
+        return original_score + pendaty_score
 
     def add_age(self, aging_speed):
         for class_list in self.data:
@@ -230,3 +283,7 @@ class PCubeMemoryBank:
         tmp_age = [x / self.capacity for x in tmp_age]
 
         return tmp_data, tmp_age
+    
+    def _calculate_softmax_dist(self):
+        dist = torch.tensor([len(c) for c in self.data], dtype=torch.float32)
+        return torch.softmax(dist / self.sofmax_dist_temperature, dim=0)
