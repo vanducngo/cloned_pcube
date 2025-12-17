@@ -180,9 +180,18 @@ class PCubeMemoryBank:
         else:
             return self.remove_from_classes([cls], score)
         
-    def remove_instance_v2(self, score, current_softmax_dist):
-        majority_classes = self.get_all_classes()
-        return self.remove_from_classes_v2(majority_classes, score, current_softmax_dist)
+    def remove_instance_v2(self, cls, score, current_softmax_dist):
+        class_list = self.data[cls]
+        class_occupied = len(class_list)
+        all_occupancy = self.get_occupancy()
+        if class_occupied < self.per_class_capacity:
+            if all_occupancy < self.capacity:
+                return True
+            else:
+                majority_classes = self.get_all_classes()
+                return self.remove_from_classes_v2(majority_classes, score, current_softmax_dist)
+        else:
+            return self.remove_from_classes_v2([cls], score, current_softmax_dist)
     
     def remove_from_classes_v2(self, classes: list[int], score_base, current_softmax_dist):
         max_class = None
