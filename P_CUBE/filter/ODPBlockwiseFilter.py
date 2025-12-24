@@ -23,22 +23,17 @@ class ODPBlockwiseFilter:
         self.threshold = threshold
         self.quantile = 0.85
 
-
-        # --- Dynamic Safety Bounds Parameters ---
-        # Khởi tạo thống kê toàn cục
+        # --- Cấu hình Dynamic Safety Bounds (EMA) ---
         self.global_mean = 0.0
-        self.global_std = 0.0 # Hoặc 1.0 để an toàn ban đầu
-        self.ema_alpha = 0.1  # Tốc độ cập nhật (0.1 nghĩa là lấy 10% mới, 90% cũ)
-        self.initialized = False # Cờ đánh dấu đã chạy batch đầu tiên chưa
+        self.global_std = 0.0
+        self.ema_alpha = 0.1  # Tốc độ cập nhật thống kê lịch sử
+        self.initialized = False 
         
-        # Hệ số Sigma (K) để xác định bounds. 
-        # Quy tắc 3-sigma: Mean + 3*Std bao phủ 99.7% dữ liệu chuẩn.
-        # Min bound: Nới lỏng một chút để không chặn oan mẫu tốt (ví dụ 1 sigma).
-        # Max bound: Chặn các ngoại lai xa (ví dụ 3 sigma).
+        # Hệ số Sigma cho Safety Bounds
+        # Otsu threshold sẽ bị kẹp trong khoảng [Mean - 1*Std, Mean + 3*Std] của lịch sử
         self.k_min = 1.0 
-        self.k_max = 3.0 
-        
-        
+        self.k_max = 3.0
+    
         # print("\n--- ARCHITECTURE DEBUG ---")
         # for name, module in model_architecture.named_modules():
         #     # In ra tên module và tên class của nó
@@ -53,6 +48,51 @@ class ODPBlockwiseFilter:
         # Điều này giúp tránh việc deepcopy và prune lặp đi lặp lại, tối ưu hóa hiệu năng.
         self.pruned_blocks = self._create_pruned_versions(model_architecture)
 
+    def _otsu_threshold(self, scores_tensor):
+        """
+        Thuật toán Otsu tìm ngưỡng tối ưu cho mảng 1D (ODP scores).
+        """
+        scores_np = scores_tensor.detach().cpu().numpy()
+        
+        # Trường hợp biên: Nếu tất cả điểm giống hệt nhau
+        if np.min(scores_np) == np.max(scores_np):
+            return np.max(scores_np) + 1e-6 # Lấy hết hoặc chặn hết tùy logic ngoài
+
+        # Chia bin histogram (100 bins là đủ mịn cho khoảng giá trị 0-1)
+        # Lưu ý: Phạm vi bin nên bao phủ từ min đến max của batch hiện tại
+        bins = np.linspace(np.min(scores_np), np.max(scores_np), 100)
+        hist, bin_edges = np.histogram(scores_np, bins=bins)
+        
+        # Chuẩn hóa histogram
+        total = hist.sum()
+        current_max, threshold = 0, 0
+        sum_total = np.dot(np.arange(len(hist)), hist)
+        
+        weight_bg = 0
+        sum_bg = 0
+        
+        for i in range(len(hist)):
+            weight_bg += hist[i]
+            if weight_bg == 0: continue
+            
+            weight_fg = total - weight_bg
+            if weight_fg == 0: break
+            
+            sum_bg += i * hist[i]
+            
+            mean_bg = sum_bg / weight_bg
+            mean_fg = (sum_total - sum_bg) / weight_fg
+            
+            # Between Class Variance
+            var_between = weight_bg * weight_fg * ((mean_bg - mean_fg) ** 2)
+            
+            if var_between > current_max:
+                current_max = var_between
+                # Lấy giá trị ngưỡng tương ứng với bin thứ i
+                threshold = bin_edges[i]
+                
+        return threshold
+    
     def _find_prunable_block_names(self, model):
         """Duyệt qua mô hình để tìm tên của các khối có cấu trúc phù hợp (ví dụ: BasicBlock, Bottleneck)."""
         block_names = []
@@ -165,73 +205,64 @@ class ODPBlockwiseFilter:
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
         
         
-        # --- 1. Tính toán Dynamic Bounds dựa trên lịch sử ---
-        if not self.initialized:
-            # Batch đầu tiên: Chưa có lịch sử -> Dùng Quantile thuần túy làm mốc
-            # Hoặc dùng giá trị khởi tạo an toàn (ví dụ max của batch đầu)
-            batch_mean = final_odp_scores.mean().item()
-            batch_std = final_odp_scores.std().item()
+        # ---------------------------------------------------------
+        # [NEW] Implement: Otsu's Method with History Safety Check
+        # ---------------------------------------------------------
+        
+        if final_odp_scores.numel() > 0:
+            # 1. Tính ngưỡng đề xuất bởi Otsu (Local Optimality)
+            otsu_thresh = self._otsu_threshold(final_odp_scores)
             
-            self.global_mean = batch_mean
-            self.global_std = batch_std if batch_std > 0 else 0.01 # Tránh div by zero
-            self.initialized = True
-            
-            # Ngưỡng batch đầu dùng quantile bình thường
-            current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-        else:
-            # Các batch sau: Tính Bounds từ Global Stats
-            safe_min = self.global_mean + self.k_min * self.global_std
-            safe_max = self.global_mean + self.k_max * self.global_std
-            
-            # Tính quantile threshold của batch hiện tại
-            soft_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-            
-            # Áp dụng logic kẹp (Clamping)
-            if soft_threshold > safe_max:
-                current_threshold = safe_max # Chặn nhiễu đột biến
-            elif soft_threshold < safe_min:
-                current_threshold = safe_min # Tránh starvation khi batch quá sạch
+            if not self.initialized:
+                # Batch đầu tiên: Tin tưởng hoàn toàn vào Otsu
+                current_threshold = otsu_thresh
+                
+                # Khởi tạo thống kê lịch sử
+                self.global_mean = final_odp_scores.mean().item()
+                self.global_std = final_odp_scores.std().item()
+                if self.global_std == 0: self.global_std = 0.01
+                self.initialized = True
             else:
-                current_threshold = soft_threshold
+                # 2. Tính Safety Bounds từ Lịch sử (Global Consistency)
+                safe_min = self.global_mean - self.k_min * self.global_std # Ngưỡng sàn (cho phép mẫu siêu sạch)
+                safe_max = self.global_mean + self.k_max * self.global_std # Ngưỡng trần (chặn mẫu nhiễu đột biến)
+                
+                # Đảm bảo min không âm
+                safe_min = max(safe_min, 0.0)
+                
+                # 3. Kẹp ngưỡng Otsu vào vùng an toàn
+                if otsu_thresh > safe_max:
+                    # Otsu muốn lấy quá nhiều (cả rác), ép xuống safe_max
+                    current_threshold = safe_max
+                    # print(f"DEBUG: Batch bad. Otsu {otsu_thresh:.4f} -> Clamped {safe_max:.4f}")
+                elif otsu_thresh < safe_min:
+                    # Otsu quá gắt (bỏ cả mẫu tốt), nâng lên safe_min
+                    current_threshold = safe_min 
+                    # print(f"DEBUG: Batch good. Otsu {otsu_thresh:.4f} -> Clamped {safe_min:.4f}")
+                else:
+                    # Otsu hợp lý
+                    current_threshold = otsu_thresh
+                    # print(f"DEBUG: Normal. Otsu {otsu_thresh:.4f}")
 
-        # --- 2. Lọc và Tạo Mask ---
+        else:
+            current_threshold = float('inf') 
+        
+        # 4. Lọc
         is_stable_mask = (final_odp_scores <= current_threshold)
         
-        # --- 3. Cập nhật Global Stats (Quan trọng!) ---
-        # Chỉ dùng các mẫu ĐƯỢC CHẤP NHẬN (Passed Samples) để cập nhật lịch sử.
-        # Điều này giúp lịch sử luôn phản ánh phân phối của mẫu "Sạch".
+        # 5. Cập nhật Lịch sử (EMA) - Chỉ dùng mẫu được chọn
         if is_stable_mask.sum() > 0:
             passed_scores = final_odp_scores[is_stable_mask]
-            
             batch_mean = passed_scores.mean().item()
             batch_std = passed_scores.std().item()
             
-            # Cập nhật EMA
+            # Cập nhật có trọng số (EMA)
             self.global_mean = (1 - self.ema_alpha) * self.global_mean + self.ema_alpha * batch_mean
-            # Cập nhật Std cũng cần EMA để ổn định biên độ dao động
-            self.global_std = (1 - self.ema_alpha) * self.global_std + self.ema_alpha * batch_std
-
+            # Cập nhật std cần cẩn thận hơn để tránh nó co về 0
+            if batch_std > 0:
+                self.global_std = (1 - self.ema_alpha) * self.global_std + self.ema_alpha * batch_std
+        
         return is_stable_mask, final_odp_scores
-
-
-        # Cai tien GMM
-        # # Chuyển đổi sang numpy để xử lý với sklearn GMM
-        # scores_np = final_odp_scores.cpu().numpy().reshape(-1, 1)
-        # # Khởi tạo và khớp GMM với 2 thành phần (sạch và nhiễu) [1]
-        # gmm = GaussianMixture(n_components=2, covariance_type='full', max_iter=100)
-        # gmm.fit(scores_np)
-
-        # # Xác định cụm nào là "Sạch" (cụm có giá trị trung bình thấp hơn) [1]
-        # means = gmm.means_.flatten()
-        # clean_cluster_idx = np.argmin(means) 
-
-        # # Dự đoán nhãn cụm cho từng mẫu
-        # cluster_labels = gmm.predict(scores_np)
-
-        # # Tạo mask: True cho mẫu thuộc cụm "Sạch"
-        # is_stable_mask = torch.from_numpy(cluster_labels == clean_cluster_idx).to(final_odp_scores.device)
-
-        # return is_stable_mask, final_odp_scores
     
 
 
