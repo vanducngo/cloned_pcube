@@ -69,7 +69,7 @@ class P_Cube_Filter:
         # Cập nhật mask tổng lần cuối
         # final_mask[final_mask.clone()] = certain_mask_relative
         
-        num_after_gate3 = final_mask.sum().item()
-        print(f"Gate 3 (Certainty): {num_after_gate3}/{num_after_prev_gate} samples passed.")
+        # num_after_gate3 = final_mask.sum().item()
+        # print(f"Gate 3 (Certainty): {num_after_gate3}/{num_after_prev_gate} samples passed.")
         
         return final_mask

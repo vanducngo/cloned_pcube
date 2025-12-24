@@ -159,6 +159,7 @@ class ODPBlockwiseFilter:
         # --- Bước 5: Tổng hợp Điểm và Quyết định ---
         # Lấy trung bình điểm ODP trên tất cả các khối cho mỗi mẫu
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
+        
         current_threshold = self.safe_max
         # ---------------------------------------------------------
         # Adaptive Quantile with Safety Bound
@@ -184,7 +185,9 @@ class ODPBlockwiseFilter:
             current_threshold = float('inf') 
         
         # 3. Lọc
-        is_stable_mask = (final_odp_scores <= current_threshold)
+
+        print(f"current_threshold: {current_threshold}")
+        is_stable_mask = (final_odp_scores < current_threshold)
         
         return is_stable_mask, final_odp_scores
 
