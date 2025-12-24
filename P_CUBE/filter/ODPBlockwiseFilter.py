@@ -159,14 +159,13 @@ class ODPBlockwiseFilter:
         # --- Bước 5: Tổng hợp Điểm và Quyết định ---
         # Lấy trung bình điểm ODP trên tất cả các khối cho mỗi mẫu
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
-
+        current_threshold = self.safe_max
         # ---------------------------------------------------------
         # Adaptive Quantile with Safety Bound
         # ---------------------------------------------------------
         if final_odp_scores.numel() > 0:
             # 1. Tính ngưỡng mềm dựa trên Quantile (mặc định lấy 85% tốt nhất)
             soft_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-
             # 2. Áp dụng Safety Bounds (Kẹp giá trị)
             # Logic: 
             # - Nếu soft_threshold > safe_max (Batch quá tệ, quantile lấy cả rác) -> Ép xuống safe_max để chặn rác.
@@ -181,7 +180,6 @@ class ODPBlockwiseFilter:
             else:
                 current_threshold = soft_threshold
                 # print(f"DEBUG: Batch normal. Use quantile threshold: {soft_threshold:.4f}")
-
         else:
             current_threshold = float('inf') 
         
