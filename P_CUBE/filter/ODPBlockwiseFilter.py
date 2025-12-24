@@ -24,15 +24,19 @@ class ODPBlockwiseFilter:
         self.quantile = 0.85
 
 
-        # Cấu hình Safety Bounds ---
-        # SAFE_MAX: Ngưỡng trần. Nếu cả batch toàn rác (ODP cao), ép ngưỡng xuống mức này để chặn bớt.
-        # SAFE_MIN: Ngưỡng sàn. Nếu cả batch toàn sạch (ODP thấp), nâng ngưỡng lên mức này để nhận thêm.
-        # Lưu ý: Các giá trị này cần tinh chỉnh dựa trên log ODP score thực tế của bạn (ví dụ chạy 5-10 batch đầu để xem range).
-        # Gợi ý: ODP score là 1 - cosine similarity. 
-        # Nếu cosine ~ 0.9 (rất giống) -> score ~ 0.1.
-        # Nếu cosine ~ 0.5 (khác biệt) -> score ~ 0.5.
-        self.safe_max = 0.5  
-        self.safe_min = 0.1  
+        # --- Dynamic Safety Bounds Parameters ---
+        # Khởi tạo thống kê toàn cục
+        self.global_mean = 0.0
+        self.global_std = 0.0 # Hoặc 1.0 để an toàn ban đầu
+        self.ema_alpha = 0.1  # Tốc độ cập nhật (0.1 nghĩa là lấy 10% mới, 90% cũ)
+        self.initialized = False # Cờ đánh dấu đã chạy batch đầu tiên chưa
+        
+        # Hệ số Sigma (K) để xác định bounds. 
+        # Quy tắc 3-sigma: Mean + 3*Std bao phủ 99.7% dữ liệu chuẩn.
+        # Min bound: Nới lỏng một chút để không chặn oan mẫu tốt (ví dụ 1 sigma).
+        # Max bound: Chặn các ngoại lai xa (ví dụ 3 sigma).
+        self.k_min = 1.0 
+        self.k_max = 3.0 
         
         
         # print("\n--- ARCHITECTURE DEBUG ---")
@@ -160,35 +164,53 @@ class ODPBlockwiseFilter:
         # Lấy trung bình điểm ODP trên tất cả các khối cho mỗi mẫu
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
         
-        current_threshold = self.safe_max
-        # ---------------------------------------------------------
-        # Adaptive Quantile with Safety Bound
-        # ---------------------------------------------------------
-        if final_odp_scores.numel() > 0:
-            # 1. Tính ngưỡng mềm dựa trên Quantile (mặc định lấy 85% tốt nhất)
-            soft_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-            # 2. Áp dụng Safety Bounds (Kẹp giá trị)
-            # Logic: 
-            # - Nếu soft_threshold > safe_max (Batch quá tệ, quantile lấy cả rác) -> Ép xuống safe_max để chặn rác.
-            # - Nếu soft_threshold < safe_min (Batch quá tốt, quantile loại oan mẫu tốt) -> Nâng lên safe_min để nhận thêm.
+        
+        # --- 1. Tính toán Dynamic Bounds dựa trên lịch sử ---
+        if not self.initialized:
+            # Batch đầu tiên: Chưa có lịch sử -> Dùng Quantile thuần túy làm mốc
+            # Hoặc dùng giá trị khởi tạo an toàn (ví dụ max của batch đầu)
+            batch_mean = final_odp_scores.mean().item()
+            batch_std = final_odp_scores.std().item()
             
-            if soft_threshold > self.safe_max:
-                current_threshold = self.safe_max
-                # print(f"DEBUG: Batch bad quality. Clamp threshold DOWN to {self.safe_max}")
-            elif soft_threshold < self.safe_min:
-                current_threshold = self.safe_min
-                # print(f"DEBUG: Batch good quality. Clamp threshold UP to {self.safe_min}")
+            self.global_mean = batch_mean
+            self.global_std = batch_std if batch_std > 0 else 0.01 # Tránh div by zero
+            self.initialized = True
+            
+            # Ngưỡng batch đầu dùng quantile bình thường
+            current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
+        else:
+            # Các batch sau: Tính Bounds từ Global Stats
+            safe_min = self.global_mean + self.k_min * self.global_std
+            safe_max = self.global_mean + self.k_max * self.global_std
+            
+            # Tính quantile threshold của batch hiện tại
+            soft_threshold = torch.quantile(final_odp_scores, q=self.quantile)
+            
+            # Áp dụng logic kẹp (Clamping)
+            if soft_threshold > safe_max:
+                current_threshold = safe_max # Chặn nhiễu đột biến
+            elif soft_threshold < safe_min:
+                current_threshold = safe_min # Tránh starvation khi batch quá sạch
             else:
                 current_threshold = soft_threshold
-                # print(f"DEBUG: Batch normal. Use quantile threshold: {soft_threshold:.4f}")
-        else:
-            current_threshold = float('inf') 
-        
-        # 3. Lọc
 
-        print(f"current_threshold: {current_threshold}")
-        is_stable_mask = (final_odp_scores < current_threshold)
+        # --- 2. Lọc và Tạo Mask ---
+        is_stable_mask = (final_odp_scores <= current_threshold)
         
+        # --- 3. Cập nhật Global Stats (Quan trọng!) ---
+        # Chỉ dùng các mẫu ĐƯỢC CHẤP NHẬN (Passed Samples) để cập nhật lịch sử.
+        # Điều này giúp lịch sử luôn phản ánh phân phối của mẫu "Sạch".
+        if is_stable_mask.sum() > 0:
+            passed_scores = final_odp_scores[is_stable_mask]
+            
+            batch_mean = passed_scores.mean().item()
+            batch_std = passed_scores.std().item()
+            
+            # Cập nhật EMA
+            self.global_mean = (1 - self.ema_alpha) * self.global_mean + self.ema_alpha * batch_mean
+            # Cập nhật Std cũng cần EMA để ổn định biên độ dao động
+            self.global_std = (1 - self.ema_alpha) * self.global_std + self.ema_alpha * batch_std
+
         return is_stable_mask, final_odp_scores
 
 
