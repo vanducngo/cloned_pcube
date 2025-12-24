@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F
+from sklearn.mixture import GaussianMixture
 import copy
+import numpy as np
 
 """
 Bộ lọc ODP (Output Difference under Pruning) hoạt động theo từng khối (Block-wise).
@@ -146,13 +148,33 @@ class ODPBlockwiseFilter:
         # Lấy trung bình điểm ODP trên tất cả các khối cho mỗi mẫu
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
 
+
+        # Cai tien:
+        # Chuyển đổi sang numpy để xử lý với sklearn GMM
+        scores_np = final_odp_scores.cpu().numpy().reshape(-1, 1)
+        # Khởi tạo và khớp GMM với 2 thành phần (sạch và nhiễu) [1]
+        gmm = GaussianMixture(n_components=2, covariance_type='full', max_iter=100)
+        gmm.fit(scores_np)
+
+        # Xác định cụm nào là "Sạch" (cụm có giá trị trung bình thấp hơn) [1]
+        means = gmm.means_.flatten()
+        clean_cluster_idx = np.argmin(means) 
+
+        # Dự đoán nhãn cụm cho từng mẫu
+        cluster_labels = gmm.predict(scores_np)
+
+        # Tạo mask: True cho mẫu thuộc cụm "Sạch"
+        is_stable_mask = torch.from_numpy(cluster_labels == clean_cluster_idx).to(final_odp_scores.device)
+
+        return is_stable_mask, final_odp_scores
+
         # Xác định ngưỡng lọc
             # Ngưỡng thích ứng: tính toán dựa trên phân vị của batch hiện tại
-        if final_odp_scores.numel() > 0:
-            current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
-        else:
-            current_threshold = float('inf') # Nếu không có điểm nào, cho qua tất cả
+        # if final_odp_scores.numel() > 0:
+        #     current_threshold = torch.quantile(final_odp_scores, q=self.quantile)
+        # else:
+        #     current_threshold = float('inf') # Nếu không có điểm nào, cho qua tất cả
         
-        is_stable_mask = (final_odp_scores < current_threshold)
+        # is_stable_mask = (final_odp_scores < current_threshold)
         
-        return is_stable_mask, final_odp_scores
+        # return is_stable_mask, final_odp_scores

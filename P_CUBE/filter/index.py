@@ -63,11 +63,11 @@ class P_Cube_Filter:
         #     return final_mask
 
         # --- Cổng 3: Lọc Chắc chắn ---
-        samples_to_check_certainty = batch_samples[final_mask]
-        certain_mask_relative, _ = self.certainty_filter.check_batch(samples_to_check_certainty, current_model)
+        # samples_to_check_certainty = batch_samples[final_mask]
+        # certain_mask_relative, _ = self.certainty_filter.check_batch(samples_to_check_certainty, current_model)
         
         # Cập nhật mask tổng lần cuối
-        final_mask[final_mask.clone()] = certain_mask_relative
+        # final_mask[final_mask.clone()] = certain_mask_relative
         
         num_after_gate3 = final_mask.sum().item()
         print(f"Gate 3 (Certainty): {num_after_gate3}/{num_after_prev_gate} samples passed.")
