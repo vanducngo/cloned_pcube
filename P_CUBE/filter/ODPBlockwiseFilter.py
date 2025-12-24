@@ -22,14 +22,26 @@ class ODPBlockwiseFilter:
         self.pruning_ratio = pruning_ratio
         self.threshold = threshold
         self.quantile = 0.85
-        
-        # Bước 1: Tìm và lưu lại TÊN của các khối có thể phân tích (ví dụ: các khối Residual)
-        print("\n--- ARCHITECTURE DEBUG ---")
-        for name, module in model_architecture.named_modules():
-            # In ra tên module và tên class của nó
-            print(f"Name: {name:<50} | Class: {type(module).__name__}")
-        print("--- END ARCHITECTURE DEBUG ---\n")
 
+
+        # Cấu hình Safety Bounds ---
+        # SAFE_MAX: Ngưỡng trần. Nếu cả batch toàn rác (ODP cao), ép ngưỡng xuống mức này để chặn bớt.
+        # SAFE_MIN: Ngưỡng sàn. Nếu cả batch toàn sạch (ODP thấp), nâng ngưỡng lên mức này để nhận thêm.
+        # Lưu ý: Các giá trị này cần tinh chỉnh dựa trên log ODP score thực tế của bạn (ví dụ chạy 5-10 batch đầu để xem range).
+        # Gợi ý: ODP score là 1 - cosine similarity. 
+        # Nếu cosine ~ 0.9 (rất giống) -> score ~ 0.1.
+        # Nếu cosine ~ 0.5 (khác biệt) -> score ~ 0.5.
+        self.safe_max = 0.5  
+        self.safe_min = 0.1  
+        
+        
+        # print("\n--- ARCHITECTURE DEBUG ---")
+        # for name, module in model_architecture.named_modules():
+        #     # In ra tên module và tên class của nó
+        #     print(f"Name: {name:<50} | Class: {type(module).__name__}")
+        # print("--- END ARCHITECTURE DEBUG ---\n")
+
+        # Bước 1: Tìm và lưu lại TÊN của các khối có thể phân tích (ví dụ: các khối Residual)
         self.prunable_block_names = self._find_prunable_block_names(model_architecture)
         print(f"ODPFilter: Found {len(self.prunable_block_names)} prunable blocks to monitor: {self.prunable_block_names}")
         
@@ -148,25 +160,57 @@ class ODPBlockwiseFilter:
         # Lấy trung bình điểm ODP trên tất cả các khối cho mỗi mẫu
         final_odp_scores = torch.mean(torch.stack(per_block_scores, dim=0), dim=0)
 
+        # ---------------------------------------------------------
+        # Adaptive Quantile with Safety Bound
+        # ---------------------------------------------------------
+        if final_odp_scores.numel() > 0:
+            # 1. Tính ngưỡng mềm dựa trên Quantile (mặc định lấy 85% tốt nhất)
+            soft_threshold = torch.quantile(final_odp_scores, q=self.quantile)
 
-        # Cai tien:
-        # Chuyển đổi sang numpy để xử lý với sklearn GMM
-        scores_np = final_odp_scores.cpu().numpy().reshape(-1, 1)
-        # Khởi tạo và khớp GMM với 2 thành phần (sạch và nhiễu) [1]
-        gmm = GaussianMixture(n_components=2, covariance_type='full', max_iter=100)
-        gmm.fit(scores_np)
+            # 2. Áp dụng Safety Bounds (Kẹp giá trị)
+            # Logic: 
+            # - Nếu soft_threshold > safe_max (Batch quá tệ, quantile lấy cả rác) -> Ép xuống safe_max để chặn rác.
+            # - Nếu soft_threshold < safe_min (Batch quá tốt, quantile loại oan mẫu tốt) -> Nâng lên safe_min để nhận thêm.
+            
+            if soft_threshold > self.safe_max:
+                current_threshold = self.safe_max
+                # print(f"DEBUG: Batch bad quality. Clamp threshold DOWN to {self.safe_max}")
+            elif soft_threshold < self.safe_min:
+                current_threshold = self.safe_min
+                # print(f"DEBUG: Batch good quality. Clamp threshold UP to {self.safe_min}")
+            else:
+                current_threshold = soft_threshold
+                # print(f"DEBUG: Batch normal. Use quantile threshold: {soft_threshold:.4f}")
 
-        # Xác định cụm nào là "Sạch" (cụm có giá trị trung bình thấp hơn) [1]
-        means = gmm.means_.flatten()
-        clean_cluster_idx = np.argmin(means) 
-
-        # Dự đoán nhãn cụm cho từng mẫu
-        cluster_labels = gmm.predict(scores_np)
-
-        # Tạo mask: True cho mẫu thuộc cụm "Sạch"
-        is_stable_mask = torch.from_numpy(cluster_labels == clean_cluster_idx).to(final_odp_scores.device)
-
+        else:
+            current_threshold = float('inf') 
+        
+        # 3. Lọc
+        is_stable_mask = (final_odp_scores <= current_threshold)
+        
         return is_stable_mask, final_odp_scores
+
+
+        # Cai tien GMM
+        # # Chuyển đổi sang numpy để xử lý với sklearn GMM
+        # scores_np = final_odp_scores.cpu().numpy().reshape(-1, 1)
+        # # Khởi tạo và khớp GMM với 2 thành phần (sạch và nhiễu) [1]
+        # gmm = GaussianMixture(n_components=2, covariance_type='full', max_iter=100)
+        # gmm.fit(scores_np)
+
+        # # Xác định cụm nào là "Sạch" (cụm có giá trị trung bình thấp hơn) [1]
+        # means = gmm.means_.flatten()
+        # clean_cluster_idx = np.argmin(means) 
+
+        # # Dự đoán nhãn cụm cho từng mẫu
+        # cluster_labels = gmm.predict(scores_np)
+
+        # # Tạo mask: True cho mẫu thuộc cụm "Sạch"
+        # is_stable_mask = torch.from_numpy(cluster_labels == clean_cluster_idx).to(final_odp_scores.device)
+
+        # return is_stable_mask, final_odp_scores
+    
+
 
         # Xác định ngưỡng lọc
             # Ngưỡng thích ứng: tính toán dựa trên phân vị của batch hiện tại
