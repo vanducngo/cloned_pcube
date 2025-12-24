@@ -66,6 +66,7 @@ class PCubeMemoryBank:
         # self._cleanup_expired_items()
 
         # --- Bước 2: Thêm các mẫu sạch mới vào (Quản lý Vi mô) ---
+        aging_speed = self.base_aging_speed
         if self.use_adaptive_aging:
             current_batch_entropy = clean_entropies.mean().item()
             current_batch_std = clean_entropies.std().item()
@@ -78,8 +79,7 @@ class PCubeMemoryBank:
             
             # Giảm ảnh hưởng của back size nhỏ, nếu qua bộ lọc, làm clean samples còn rất nhỏ
             confidence = min(1.0, batch_size / ref_bs)
-            
-            aging_speed = self.base_aging_speed
+        
 
             drift_signal = ((current_batch_entropy - self.ema_entropy) / (self.ema_entropy + 1e-6)) * (1 + torch.tanh(torch.tensor(current_batch_std)).item())
             
