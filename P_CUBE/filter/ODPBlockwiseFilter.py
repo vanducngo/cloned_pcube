@@ -217,13 +217,13 @@ class ODPBlockwiseFilter:
             # 2. Xác định ngưỡng động dựa trên phân phối batch
             # lambda = 0.5 nghĩa là lấy các mẫu không tệ quá 0.5 độ lệch chuẩn so với trung bình
             # Đây là mức cân bằng tốt: loại bỏ đuôi nhiễu nhưng giữ lại phần lớn dữ liệu
-            lambda_factor = 0.5 
+            lambda_factor = 1.0
             current_threshold = batch_mean + lambda_factor * batch_std
             
             # 3. Cơ chế bảo vệ "Min-Card" (Quan trọng!)
             # Luôn đảm bảo ít nhất k mẫu được qua để update Batch Norm
             # Tránh lỗi "Data Starvation" gây sụp đổ model
-            min_samples = int(final_odp_scores.size(0) * 0.5) # Giữ ít nhất 50%
+            min_samples = int(final_odp_scores.size(0) * 0.6) # Giữ ít nhất 60%
             
             # Tìm giá trị ODP tại vị trí thứ min_samples (khi sort)
             top_k_value = torch.topk(final_odp_scores, min_samples, largest=False).values[-1]
