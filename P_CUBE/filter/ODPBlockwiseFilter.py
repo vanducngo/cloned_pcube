@@ -206,65 +206,39 @@ class ODPBlockwiseFilter:
         
         
         # ---------------------------------------------------------
-        # [NEW] Implement: Otsu's Method with History Safety Check
+        # [NEW STRATEGY] Batch-Relative Z-Score
         # ---------------------------------------------------------
         
-        if final_odp_scores.numel() > 0:
-            # 1. Tính ngưỡng đề xuất bởi Otsu (Local Optimality)
-            otsu_thresh = self._otsu_threshold(final_odp_scores)
+        if final_odp_scores.numel() > 1:
+            # 1. Tính thống kê nội bộ của batch hiện tại
+            batch_mean = final_odp_scores.mean()
+            batch_std = final_odp_scores.std()
             
-            if not self.initialized:
-                # Batch đầu tiên: Tin tưởng hoàn toàn vào Otsu
-                current_threshold = otsu_thresh
-                
-                # Khởi tạo thống kê lịch sử
-                self.global_mean = final_odp_scores.mean().item()
-                self.global_std = final_odp_scores.std().item()
-                if self.global_std == 0: self.global_std = 0.01
-                self.initialized = True
-            else:
-                # 2. Tính Safety Bounds từ Lịch sử (Global Consistency)
-                safe_min = self.global_mean - self.k_min * self.global_std # Ngưỡng sàn (cho phép mẫu siêu sạch)
-                safe_max = self.global_mean + self.k_max * self.global_std # Ngưỡng trần (chặn mẫu nhiễu đột biến)
-                
-                # Đảm bảo min không âm
-                safe_min = max(safe_min, 0.0)
-                
-                # 3. Kẹp ngưỡng Otsu vào vùng an toàn
-                if otsu_thresh > safe_max:
-                    # Otsu muốn lấy quá nhiều (cả rác), ép xuống safe_max
-                    current_threshold = safe_max
-                    # print(f"DEBUG: Batch bad. Otsu {otsu_thresh:.4f} -> Clamped {safe_max:.4f}")
-                elif otsu_thresh < safe_min:
-                    # Otsu quá gắt (bỏ cả mẫu tốt), nâng lên safe_min
-                    current_threshold = safe_min 
-                    # print(f"DEBUG: Batch good. Otsu {otsu_thresh:.4f} -> Clamped {safe_min:.4f}")
-                else:
-                    # Otsu hợp lý
-                    current_threshold = otsu_thresh
-                    # print(f"DEBUG: Normal. Otsu {otsu_thresh:.4f}")
+            # 2. Xác định ngưỡng động dựa trên phân phối batch
+            # lambda = 0.5 nghĩa là lấy các mẫu không tệ quá 0.5 độ lệch chuẩn so với trung bình
+            # Đây là mức cân bằng tốt: loại bỏ đuôi nhiễu nhưng giữ lại phần lớn dữ liệu
+            lambda_factor = 0.5 
+            current_threshold = batch_mean + lambda_factor * batch_std
+            
+            # 3. Cơ chế bảo vệ "Min-Card" (Quan trọng!)
+            # Luôn đảm bảo ít nhất k mẫu được qua để update Batch Norm
+            # Tránh lỗi "Data Starvation" gây sụp đổ model
+            min_samples = int(final_odp_scores.size(0) * 0.5) # Giữ ít nhất 50%
+            
+            # Tìm giá trị ODP tại vị trí thứ min_samples (khi sort)
+            top_k_value = torch.topk(final_odp_scores, min_samples, largest=False).values[-1]
+            
+            # Ngưỡng cuối cùng là max của Z-score và Min-Card
+            # Nghĩa là: Nếu Z-score cắt quá gắt, nới lỏng ra để lấy đủ 50%.
+            current_threshold = torch.max(current_threshold, top_k_value)
 
         else:
-            current_threshold = float('inf') 
-        
+            current_threshold = float('inf')
+            
         # 4. Lọc
         is_stable_mask = (final_odp_scores <= current_threshold)
         
-        # 5. Cập nhật Lịch sử (EMA) - Chỉ dùng mẫu được chọn
-        if is_stable_mask.sum() > 0:
-            passed_scores = final_odp_scores[is_stable_mask]
-            batch_mean = passed_scores.mean().item()
-            batch_std = passed_scores.std().item()
-            
-            # Cập nhật có trọng số (EMA)
-            self.global_mean = (1 - self.ema_alpha) * self.global_mean + self.ema_alpha * batch_mean
-            # Cập nhật std cần cẩn thận hơn để tránh nó co về 0
-            if batch_std > 0:
-                self.global_std = (1 - self.ema_alpha) * self.global_std + self.ema_alpha * batch_std
-        
         return is_stable_mask, final_odp_scores
-    
-
 
         # Xác định ngưỡng lọc
             # Ngưỡng thích ứng: tính toán dựa trên phân vị của batch hiện tại
