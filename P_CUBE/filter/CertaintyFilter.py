@@ -36,8 +36,15 @@ class CertaintyFilter:
         logits = current_model(batch_samples)
         probs = F.softmax(logits, dim=1)
         
+        # 1. Tín hiệu Chắc chắn Thống kê (Entropy)
         entropies = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
-        
-        is_certain_mask = (entropies < self.threshold)
+        is_entropy_certain = (entropies < self.threshold)
+
+        # 2. Tín hiệu Độ tin cậy (Max Probability)
+        max_probs, _ = torch.max(probs, dim=1)
+        is_conf_high = (max_probs >= 0.99) #TODO: Nên lấy từ config, với cifar-10 là 0.99 theo nghiên cứu từ SoTTA
+
+        # Kết hợp cả hai để tạo Certainty Mask
+        is_certain_mask = is_entropy_certain & is_conf_high
         
         return is_certain_mask, entropies
