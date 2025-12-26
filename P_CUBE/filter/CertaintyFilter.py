@@ -5,13 +5,15 @@ class CertaintyFilter:
     '''
     Bộ lọc Chắc chắn dựa trên entropy có điều chỉnh theo số lớp.
     '''
-    def __init__(self, num_classes, threshold_factor=0.5):
+    def __init__(self, num_classes, threshold_factor=0.5, confidence_factor = 0.99):
         """
         Args:
             num_classes (int): Tổng số lớp của bộ dữ liệu.
             threshold_factor (float): Hệ số để tính ngưỡng (ví dụ: 0.5). 
                                      Ngưỡng cuối cùng sẽ là factor * log(num_classes).
         """
+
+        self.confidence_factor = confidence_factor
         if num_classes <= 1:
             # Nếu chỉ có 1 lớp, entropy luôn bằng 0, đặt ngưỡng rất nhỏ
             self.threshold = 1e-6
@@ -42,7 +44,7 @@ class CertaintyFilter:
 
         # 2. Tín hiệu Độ tin cậy (Max Probability)
         max_probs, _ = torch.max(probs, dim=1)
-        is_conf_high = (max_probs >= 0.99) #TODO: Nên lấy từ config, với cifar-10 là 0.99 theo nghiên cứu từ SoTTA
+        is_conf_high = (max_probs >= self.confidence_factor)
 
         # Kết hợp cả hai để tạo Certainty Mask
         is_certain_mask = is_entropy_certain & is_conf_high

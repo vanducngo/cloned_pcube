@@ -19,6 +19,10 @@ _C.MODEL.PROJECTION.HEAD = "linear"
 _C.MODEL.PROJECTION.EMB_DIM = 2048
 _C.MODEL.PROJECTION.FEA_DIM = 128
 
+# ----------------------------- Data filter options -------------------------- #
+_C.DATA_FITER = CN()
+_C.DATA_FITER.CONFIDENCE_FACTOR = 0.99
+
 # ----------------------------- Corruption options -------------------------- #
 _C.CORRUPTION = CN()
 

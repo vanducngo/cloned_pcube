@@ -21,7 +21,8 @@ class P_Cube_Filter:
         # Cổng 3: Lọc Chắc chắn
         self.certainty_filter = CertaintyFilter(
             num_classes=cfg.CORRUPTION.NUM_CLASS,
-            threshold_factor=cfg.P_CUBE.FILTER.ENTROPY_FACTOR
+            threshold_factor=cfg.P_CUBE.FILTER.ENTROPY_FACTOR,
+            confidence_factor=cfg.DATA_FITER.CONFIDENCE_FACTOR
         )
 
     @torch.no_grad()
