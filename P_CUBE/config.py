@@ -7,7 +7,7 @@ class ModuleConfig:
     odp_ratio: float = 0.5
     odp_threshold: float = 0.2
     num_classes: int = 10
-    entropy_factor: float = 0.35 
+    entropy_factor: float = 0.4 #0.35 
     confidence_factor: float = 0.99
 
     memory_capacity: int = 64
