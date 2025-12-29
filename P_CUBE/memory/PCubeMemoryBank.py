@@ -14,8 +14,8 @@ class PCubeMemoryBank:
         self.capacity = cfg.memory_capacity
         self.num_classes = cfg.num_classes
         self.per_class_capacity = self.capacity / self.num_classes
-        self.lambda_t = cfg.lamda_t
-        self.lambda_u = cfg.lamda_u
+        self.lambda_t = cfg.lambda_t
+        self.lambda_u = cfg.lambda_u
         
         self.kl_threshold = cfg.kl_threshold
 
@@ -46,8 +46,8 @@ class PCubeMemoryBank:
 
         # --- Các thành phần cho Giai đoạn 2 (Quản lý Vòng đời) ---
         self.max_age = cfg.max_age
-        self.acceleration_factor = cfg.accleration_factor
-        self.kl_check_interval = cfg.macro_check_internal
+        self.acceleration_factor = cfg.acceleration_factor
+        self.kl_check_interval = cfg.macro_check_interval
         self.updates_since_last_check = 0
         
         # Cho việc phát hiện thay đổi miền
@@ -64,7 +64,7 @@ class PCubeMemoryBank:
             print(f"Warning: Could not infer feature_dim. Defaulting to {self.feature_dim}")
             
         self.centroids_ema = None # Khởi tạo là None
-        self.ema_momentum = cfg.macro_ema_momemtum
+        self.ema_momentum = cfg.macro_ema_momentum
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 # from ..utils import memory
+from P_CUBE.config import ModuleConfig
 from P_CUBE.index import P_CUBE
 from .base_adapter import BaseAdapter
 from copy import deepcopy
@@ -12,7 +13,27 @@ from ..utils.custom_transforms import get_tta_transforms
 class RoTTA_PCUBE_ADPATER(BaseAdapter):
     def __init__(self, cfg, model, optimizer):
         super(RoTTA_PCUBE_ADPATER, self).__init__(cfg, model, optimizer)
-        self.p_cube = P_CUBE(cfg=cfg, model_architecture=deepcopy(self.model))
+
+        moduleConfig = ModuleConfig(
+            classifier_name = cfg.MODEL.CLASSIFIER_NAME,
+            # odp_ratio= 0.5,
+            # odp_threshold = 0.2,
+            num_classes = cfg.CORRUPTION.NUM_CLASS,
+            entropy_factor = 0.35,
+            confidence_factor = 0.99,
+
+            # memory_capacity = 64,
+            # lambda_t = 1.0,
+            # lambda_u = 1.0,
+            # kl_threshold = 5.0,
+            # max_age = 1024,
+            # acceleration_factor = 100,
+            # macro_check_interval = 128,
+            # macro_ema_momentum = 0.9,
+            # input_size = (32, 32),
+        )
+
+        self.p_cube = P_CUBE(cfg=moduleConfig, model_architecture=deepcopy(self.model))
 
         self.model_ema = self.build_ema(self.model)
         self.transform = get_tta_transforms(cfg)

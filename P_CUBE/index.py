@@ -2,7 +2,7 @@ from copy import deepcopy
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-
+from pprint import pprint
 
 from P_CUBE.config import ModuleConfig
 from P_CUBE.custom_transforms import get_tta_transforms
@@ -15,6 +15,8 @@ class P_CUBE(nn.Module):
     def __init__(self, cfg: ModuleConfig, model_architecture):
         super().__init__()
         self.cfg = cfg
+
+        pprint(vars(cfg))
         
         # Giữ một bản sao source model cố định cho Consistency Filter
         source_model = deepcopy(model_architecture).eval().requires_grad_(False)
