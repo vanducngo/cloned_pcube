@@ -65,31 +65,31 @@ class P_CUBE(nn.Module):
                                                  clean_entropies,
                                                  teacher_model)
             
-    @torch.enable_grad()
-    def adapt_from_memory(self, student_model, teacher_model):
-        """
-        Thực hiện Giai đoạn 3: Lấy dữ liệu từ bộ nhớ và tính toán loss.
-        Đây là hàm duy nhất cần gradient.
-        """
-        student_model.train()
-        teacher_model.train()
+    # @torch.enable_grad()
+    # def adapt_from_memory(self, student_model, teacher_model):
+    #     """
+    #     Thực hiện Giai đoạn 3: Lấy dữ liệu từ bộ nhớ và tính toán loss.
+    #     Đây là hàm duy nhất cần gradient.
+    #     """
+    #     student_model.train()
+    #     teacher_model.train()
         
-        # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
-        sup_data, ages = self.memory.get_memory()
-        if not sup_data:
-            return None 
+    #     # replay_batch = self.memory.get_replay_batch(self.cfg.P_CUBE.BATCH_SIZE)
+    #     sup_data, ages = self.memory.get_memory()
+    #     if not sup_data:
+    #         return None 
 
-        # --- GIAI ĐOẠN 3: TÍNH TOÁN LOSS ---
-        # Gọi hàm tính loss đã được module hóa
-        # loss = _calculate_replay_loss(sup_data, 
-        #                               student_model, 
-        #                               teacher_model,
-        #                               self.cfg)
+    #     # --- GIAI ĐOẠN 3: TÍNH TOÁN LOSS ---
+    #     # Gọi hàm tính loss đã được module hóa
+    #     # loss = _calculate_replay_loss(sup_data, 
+    #     #                               student_model, 
+    #     #                               teacher_model,
+    #     #                               self.cfg)
 
-        loss = _calculate_replay_loss_rotta_like(sup_data, 
-                                      ages,
-                                      self.transform,
-                                      student_model, 
-                                      teacher_model)
+    #     loss = _calculate_replay_loss_rotta_like(sup_data, 
+    #                                   ages,
+    #                                   self.transform,
+    #                                   student_model, 
+    #                                   teacher_model)
 
-        return loss
+    #     return loss
