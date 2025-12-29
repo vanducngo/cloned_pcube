@@ -3,19 +3,25 @@ import random
 from torch import nn
 import torch
 
+from P_CUBE.config import ModuleConfig
+
 from .utils import calculate_centroid_distance, calculate_centroids_from_buffer, calculate_stats_on_buffer, ema_update, ema_update_centroids, kl_divergence
 from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
 class PCubeMemoryBank:
-    def __init__(self, cfg, model_architecture):
-        self.capacity = cfg.P_CUBE.CAPACITY
-        self.num_classes = cfg.CORRUPTION.NUM_CLASS
+    def __init__(self, cfg: ModuleConfig, model_architecture):
+        self.capacity = cfg.memory_capacity
+        self.num_classes = cfg.num_classes
         self.per_class_capacity = self.capacity / self.num_classes
-        self.lambda_t = cfg.P_CUBE.LAMBDA_T
-        self.lambda_u = cfg.P_CUBE.LAMBDA_U
+        self.lambda_t = cfg.lamda_t
+        self.lambda_u = cfg.lamda_u
         
-        self.kl_threshold = cfg.P_CUBE.KL_THRESHOLD
+        self.kl_threshold = cfg.kl_threshold
+
+
+
+        
 
         self.use_aware_score = False
         self.use_adaptive_aging = False
@@ -39,9 +45,9 @@ class PCubeMemoryBank:
         self.data: list[list[MemoryItem]] = [[] for _ in range(self.num_classes)]
 
         # --- Các thành phần cho Giai đoạn 2 (Quản lý Vòng đời) ---
-        self.max_age = cfg.P_CUBE.MAX_AGE
-        self.acceleration_factor = cfg.P_CUBE.ACCELERATION_FACTOR
-        self.kl_check_interval = cfg.P_CUBE.KL_CHECK_INTERVAL
+        self.max_age = cfg.max_age
+        self.acceleration_factor = cfg.accleration_factor
+        self.kl_check_interval = cfg.macro_check_internal
         self.updates_since_last_check = 0
         
         # Cho việc phát hiện thay đổi miền
@@ -58,7 +64,7 @@ class PCubeMemoryBank:
             print(f"Warning: Could not infer feature_dim. Defaulting to {self.feature_dim}")
             
         self.centroids_ema = None # Khởi tạo là None
-        self.ema_momentum = cfg.P_CUBE.EMA_MOMENTUM
+        self.ema_momentum = cfg.macro_ema_momemtum
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):

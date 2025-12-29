@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
+from P_CUBE.config import ModuleConfig
 from P_CUBE.custom_transforms import get_tta_transforms
 from P_CUBE.features import get_features_from_model
 from P_CUBE.replay import _calculate_replay_loss_rotta_like
@@ -11,7 +12,7 @@ from .filter.index import P_Cube_Filter
 from .memory.PCubeMemoryBank import PCubeMemoryBank
 
 class P_CUBE(nn.Module):
-    def __init__(self, cfg, model_architecture):
+    def __init__(self, cfg: ModuleConfig, model_architecture):
         super().__init__()
         self.cfg = cfg
         
@@ -46,7 +47,7 @@ class P_CUBE(nn.Module):
             clean_samples = batch_data[clean_mask]
             
             # Lấy các thông tin cần thiết từ các mẫu sạch
-            classifier_name = self.cfg.MODEL.CLASSIFIER_NAME # ví dụ: 'fc' hoặc 'classifier'
+            classifier_name = self.cfg.classifier_name # ví dụ: 'fc' hoặc 'classifier'
             clean_features = get_features_from_model(teacher_model, clean_samples, classifier_name)
 
             clean_outputs = teacher_model(clean_samples)
@@ -87,7 +88,6 @@ class P_CUBE(nn.Module):
                                       ages,
                                       self.transform,
                                       student_model, 
-                                      teacher_model,
-                                      self.cfg)
+                                      teacher_model)
 
         return loss

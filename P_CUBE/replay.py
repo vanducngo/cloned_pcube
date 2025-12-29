@@ -4,7 +4,7 @@ from torchvision import transforms
 from P_CUBE.custom_transforms import get_tta_transforms
 
 @torch.enable_grad()
-def _calculate_replay_loss_rotta_like(sup_data, ages, transform, student_model, teacher_model, cfg):
+def _calculate_replay_loss_rotta_like(sup_data, ages, transform, student_model, teacher_model):
     device = next(teacher_model.parameters()).device
     
     l_sup = None

@@ -1,18 +1,20 @@
 import torch
+
+from P_CUBE.config import ModuleConfig
 from .ODPBlockwiseFilter import ODPBlockwiseFilter
 from .ConsistencyFilter import ConsistencyFilter
 from .CertaintyFilter import CertaintyFilter
 
 class P_Cube_Filter:
-    def __init__(self, cfg, model_architecture, source_model):
+    def __init__(self, cfg: ModuleConfig, model_architecture, source_model):
         print("Initializing P-CUBE Filters...")
         self.source_model = source_model
         
         # Cổng 1: Lọc Ổn định
         self.odp_filter = ODPBlockwiseFilter(
             model_architecture=model_architecture,
-            pruning_ratio=cfg.P_CUBE.FILTER.ODP_RATIO,
-            threshold=cfg.P_CUBE.FILTER.ODP_THRESHOLD
+            pruning_ratio=cfg.odp_ratio,
+            threshold=cfg.odp_threshold
         )
 
         # Cổng 2: Lọc Nhất quán
@@ -20,9 +22,9 @@ class P_Cube_Filter:
 
         # Cổng 3: Lọc Chắc chắn
         self.certainty_filter = CertaintyFilter(
-            num_classes=cfg.CORRUPTION.NUM_CLASS,
-            threshold_factor=cfg.P_CUBE.FILTER.ENTROPY_FACTOR,
-            confidence_factor=cfg.DATA_FITER.CONFIDENCE_FACTOR
+            num_classes=cfg.num_classes,
+            threshold_factor=cfg.entropy_factor,
+            confidence_factor=cfg.confidence_factor
         )
 
     @torch.no_grad()

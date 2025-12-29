@@ -6,9 +6,11 @@ import PIL
 import torchvision.transforms as transforms
 from torchvision.transforms import InterpolationMode
 
+from P_CUBE.config import ModuleConfig
 
-def get_tta_transforms(cfg, gaussian_std: float=0.005, soft=False):
-    img_shape = (*cfg.INPUT.SIZE, 3)
+
+def get_tta_transforms(cfg: ModuleConfig, gaussian_std: float=0.005, soft=False):
+    img_shape = (*cfg.input_size, 3)
     n_pixels = img_shape[0]
 
     clip_min, clip_max = 0.0, 1.0
