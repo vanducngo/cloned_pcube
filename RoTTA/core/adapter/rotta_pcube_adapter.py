@@ -64,6 +64,10 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
         self.model_ema.train()
         # get memory data
         sup_data, ages = self.p_cube.memory.get_memory()
+        
+        sup_data = torch.stack(sup_data).cuda()
+        ages = torch.tensor(ages).float().cuda()
+        
         l_sup = None
         if len(sup_data) > 0:
             sup_data = torch.stack(sup_data)
