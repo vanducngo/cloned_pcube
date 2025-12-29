@@ -39,7 +39,8 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
         self.transform = get_tta_transforms(cfg)
         self.nu = cfg.ADAPTER.RoTTA.NU
         self.update_frequency = cfg.ADAPTER.RoTTA.UPDATE_FREQUENCY  # actually the same as the size of memory bank
-        self.current_instance = 0
+
+        self.updates_since_last_adapt = 0
 
     @torch.enable_grad()
     def forward_and_adapt(self, batch_data, model, optimizer):
