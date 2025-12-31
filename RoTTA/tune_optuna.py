@@ -1,112 +1,73 @@
-import optuna
+from copy import deepcopy
 import logging
 import torch
+import optuna
 import argparse
-import sys
-from tqdm import tqdm
-from copy import deepcopy
 
-# Import các module từ codebase hiện tại
-# Đảm bảo bạn đặt file này ở root folder của project (cùng cấp với core/)
 from core.configs import cfg
-from core.utils import setup_logger, set_random_seed, mkdir
+from core.utils import *
 from core.model import build_model
 from core.data import build_loader
 from core.optim import build_optimizer
 from core.adapter import build_adapter
+from tqdm import tqdm
+from setproctitle import setproctitle
 
-# Cấu hình log để giảm bớt output rác, chỉ hiện thông tin quan trọng
-logging.getLogger("TTA").setLevel(logging.WARNING)
+# Tắt log hệ thống, chỉ giữ lại log quan trọng
+logging.getLogger("TTA").setLevel(logging.ERROR)
 
-def run_tta_full_experiment(trial_cfg, trial):
-    """
-    Chạy Full TTA Experiment trên 15 Corruptions (Giống PTTA.py).
-    Trả về Average Error Rate.
-    """
-    dataset_name = trial_cfg.CORRUPTION.DATASET
-    # Lấy danh sách 15 corruption chuẩn từ config hoặc hardcode
-    # Thông thường cfg.CORRUPTION.TYPE là một list hoặc 'all'
-    # Ở đây mình giả định chạy loop qua tất cả các loại
-    all_corruptions = [
-        "gaussian_noise", "shot_noise", "impulse_noise",
-        "defocus_blur", "glass_blur", "motion_blur", "zoom_blur",
-        "snow", "frost", "fog",
-        "brightness", "contrast", "elastic_transform", "pixelate", "jpeg_compression"
-    ]
-    
-    total_error = 0.0
-    processed_count = 0
-    
-    # Progress bar cho các corruptions
-    pbar_corr = tqdm(all_corruptions, desc=f"Trial {trial.number}")
-    
-    for i, corruption in enumerate(pbar_corr):
-        # 1. Build Model & Adapter mới cho mỗi corruption (Reset trạng thái)
-        # Đây là quy trình chuẩn của TTA benchmark
-        model = build_model(trial_cfg)
-        model = model.cuda()
-        optimizer = build_optimizer(trial_cfg)
-        tta_adapter = build_adapter(trial_cfg)
-        tta_model = tta_adapter(trial_cfg, model, optimizer)
-        
-        # 2. Build Loader
-        # Severity mặc định là 5 (chuẩn benchmark)
-        loader, processor = build_loader(trial_cfg, dataset_name, corruption, 5)
-        
-        # 3. Chạy TTA Loop (Full Data)
-        for batch_id, data_package in enumerate(loader):
-            data, label, domain = data_package["image"], data_package['label'], data_package['domain']
-            if len(label) == 1: continue
-            
-            data, label = data.cuda(), label.cuda()
-            
-            output = tta_model(data)
-            predict = torch.argmax(output, dim=1)
-            accurate = (predict == label)
-            
-            processor.process(accurate, domain)
-            
-        processor.calculate()
-        
-        # Lấy Accuracy -> Error Rate
-        acc = processor.cumulative_acc()
-        # Chuẩn hóa về 0-100 nếu processor trả về 0-1
-        if acc <= 1.0: acc *= 100.0 
-        error_rate = 100.0 - acc
-        
-        total_error += error_rate
-        processed_count += 1
-        
-        # Log kết quả từng corruption để theo dõi
-        pbar_corr.set_postfix({'curr_err': f"{error_rate:.2f}", 'avg_err': f"{total_error/processed_count:.2f}"})
-        
-        # Dọn dẹp GPU
-        del tta_model, model, optimizer, loader
-        torch.cuda.empty_cache()
-        
-        # --- Optuna Pruning (Cắt tỉa sớm) ---
-        # Báo cáo kết quả trung bình tạm thời sau mỗi corruption
-        # Nếu kết quả quá tệ so với các trial trước đó -> Dừng luôn trial này
-        intermediate_value = total_error / processed_count
-        trial.report(intermediate_value, i)
-        
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
+def testTimeAdaptation(cfg):
+    logger = logging.getLogger("TTA.test_time")
+    # model, optimizer
+    model = build_model(cfg)
 
-    return total_error / len(all_corruptions)
+    optimizer = build_optimizer(cfg)
+
+    tta_adapter = build_adapter(cfg)
+
+    tta_model = tta_adapter(cfg, model, optimizer)
+    tta_model.cuda()
+
+    loader, processor = build_loader(cfg, cfg.CORRUPTION.DATASET, cfg.CORRUPTION.TYPE, cfg.CORRUPTION.SEVERITY)
+
+    tbar = tqdm(loader)
+    for batch_id, data_package in enumerate(tbar):
+        data, label, domain = data_package["image"], data_package['label'], data_package['domain']
+        if len(label) == 1:
+            continue  # ignore the final single point
+        data, label = data.cuda(), label.cuda()
+        output = tta_model(data)
+        predict = torch.argmax(output, dim=1)
+        accurate = (predict == label)
+        processor.process(accurate, domain)
+        if batch_id % 10 == 0:
+            if hasattr(tta_model, "mem"):
+                tbar.set_postfix(acc=processor.cumulative_acc(), bank=tta_model.mem.get_occupancy())
+            else:
+                tbar.set_postfix(acc=processor.cumulative_acc())
+
+    processor.calculate()
+
+    # logger.info(f"All Results\n{processor.info()}")
+    # Chuẩn hóa về 0-100
+    if acc <= 1.0: acc *= 100.0
+    error_rate = 100.0 - acc
+    
+    # Dọn dẹp
+    del tta_model, model, optimizer, loader
+    torch.cuda.empty_cache()
+    
+    return error_rate
 
 def objective(trial):
     # 1. Gợi ý tham số
-    # Tìm kiếm entropy_factor từ 0.05 đến 1.0 (step 0.05)
     entropy_factor = trial.suggest_float("entropy_factor", 0.05, 1.0, step=0.05)
     
-    # 2. Clone Config gốc
+    # 2. Clone & Update Config
     trial_cfg = deepcopy(cfg)
     trial_cfg.defrost()
     
-    # Cập nhật tham số cần tune
-    # Đảm bảo đúng đường dẫn biến trong config của bạn
-    # Ví dụ: cfg.P_CUBE.FILTER.ENTROPY_FACTOR
+    # Cấu hình tham số cần tune
     if not hasattr(trial_cfg, 'P_CUBE'):
         from yacs.config import CfgNode as CN
         trial_cfg.P_CUBE = CN()
@@ -114,70 +75,112 @@ def objective(trial):
         
     trial_cfg.P_CUBE.FILTER.ENTROPY_FACTOR = entropy_factor
     
-    # Đảm bảo các tham số khác chuẩn
-    # trial_cfg.CORRUPTION.DATASET = 'cifar10' # Hoặc lấy từ args
+    # Đảm bảo chạy full pipeline
+    # Nếu file config của bạn để CORRUPTION.TYPE là 1 loại cụ thể, hãy sửa thành list tất cả hoặc logic tương ứng
+    # Ở đây mình giả định config mặc định đã cấu hình để chạy full sequence
     
     trial_cfg.freeze()
     
-    # 3. Chạy thực nghiệm
+    # 3. Chạy Full Pipeline
     try:
-        avg_error = run_tta_full_experiment(trial_cfg, trial)
-        return avg_error
-    except optuna.exceptions.TrialPruned:
-        raise
+        print(f"\n[Trial {trial.number}] Running with entropy_factor={entropy_factor:.3f} ...")
+        error_rate = testTimeAdaptation(trial_cfg)
+        print(f"[Trial {trial.number}] Result: Error Rate = {error_rate:.2f}%")
+        return error_rate
     except Exception as e:
         print(f"[Trial {trial.number}] Failed: {e}")
-        # Trả về giá trị rất lớn để Optuna biết đây là bộ tham số tồi
-        return 100.0 
+        return 100.0 # Penalty
 
 def main():
-    # Setup Argument Parser giống PTTA.py để dễ dùng
-    parser = argparse.ArgumentParser("Optuna Tuning for RoTTA")
-    parser.add_argument('-acfg', '--adapter-config-file', type=str, default="", help="path to adapter config file")
-    parser.add_argument('-dcfg', '--dataset-config-file', type=str, default="", help="path to dataset config file")
-    parser.add_argument('opts', default=None, nargs=argparse.REMAINDER)
+    parser = argparse.ArgumentParser("Pytorch Implementation for Test Time Adaptation!")
+    parser.add_argument(
+        '-acfg',
+        '--adapter-config-file',
+        metavar="FILE",
+        default="",
+        help="path to adapter config file",
+        type=str)
+    parser.add_argument(
+        '-dcfg',
+        '--dataset-config-file',
+        metavar="FILE",
+        default="",
+        help="path to dataset config file",
+        type=str)
+    parser.add_argument(
+        '-ocfg',
+        '--order-config-file',
+        metavar="FILE",
+        default="",
+        help="path to order config file",
+        type=str)
+    parser.add_argument(
+        'opts',
+        help='modify the configuration by command line',
+        nargs=argparse.REMAINDER,
+        default=None)
+
     args = parser.parse_args()
 
-    # Load Configs
-    if args.adapter_config_file:
-        cfg.merge_from_file(args.adapter_config_file)
-    if args.dataset_config_file:
-        cfg.merge_from_file(args.dataset_config_file)
-    if args.opts:
-        cfg.merge_from_list(args.opts)
-    
-    # Setup Random Seed
-    set_random_seed(cfg.SEED)
-    
-    print(f"Start Tuning on Dataset: {cfg.CORRUPTION.DATASET}")
-    print(f"Base Config Loaded. Default Entropy Factor: {getattr(cfg.P_CUBE.FILTER, 'ENTROPY_FACTOR', 'N/A')}")
+    if len(args.opts) > 0:
+        args.opts[-1] = args.opts[-1].strip('\r\n')
 
-    # Setup Optuna Study
-    # Lưu vào SQLite để resume nếu bị ngắt giữa chừng
-    db_url = "sqlite:///optuna_rotta.db"
-    study_name = f"rotta_tuning_{cfg.CORRUPTION.DATASET}"
+    torch.backends.cudnn.benchmark = True
+
+    cfg.merge_from_file(args.adapter_config_file)
+    cfg.merge_from_file(args.dataset_config_file)
+    if not args.order_config_file == "":
+        cfg.merge_from_file(args.order_config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+
+    ds = cfg.CORRUPTION.DATASET
+    adapter = cfg.ADAPTER.NAME
+    setproctitle(f"TTA:{ds:>8s}:{adapter:<10s}")
+
+    if cfg.OUTPUT_DIR:
+        mkdir(cfg.OUTPUT_DIR)
+
+    logger = setup_logger('TTA', cfg.OUTPUT_DIR, 0, filename=cfg.LOG_DEST)
+    logger.info(args)
+
+    logger.info(f"Loaded configuration file: \n"
+                f"\tadapter: {args.adapter_config_file}\n"
+                f"\tdataset: {args.dataset_config_file}\n"
+                f"\torder: {args.order_config_file}")
+    logger.info("Running with config:\n{}".format(cfg))
+
+    set_random_seed(cfg.SEED)
+
+    # testTimeAdaptation(cfg)
+
+    # Setup DB
+    db_url = "sqlite:///optuna_full_pipeline.db"
+    study_name = f"full_tuning_{cfg.CORRUPTION.DATASET}"
     
     study = optuna.create_study(
         study_name=study_name,
         storage=db_url,
         load_if_exists=True,
         direction="minimize",
-        sampler=optuna.samplers.TPESampler(seed=cfg.SEED),
-        pruner=optuna.pruners.MedianPruner(n_warmup_steps=1) # Pruning sau 1 corruption đầu tiên
+        sampler=optuna.samplers.TPESampler(seed=cfg.SEED)
     )
+    
+    print(f"Start Tuning on {cfg.CORRUPTION.DATASET}. Results saved to {db_url}")
     
     # Chạy tối ưu (Ví dụ 20 trials)
     study.optimize(objective, n_trials=20)
     
+    # In kết quả tốt nhất
     print("\n" + "="*50)
-    print("TUNING COMPLETED")
-    print(f"Best Error Rate: {study.best_value:.4f}")
-    print(f"Best Params: {study.best_params}")
+    print(f"BEST RESULT: Error Rate = {study.best_value:.2f}%")
+    print("Best Params:", study.best_params)
     print("="*50)
     
-    # Xuất kết quả ra CSV
+    # Lưu CSV
     df = study.trials_dataframe()
-    df.to_csv(f"tuning_results_{cfg.CORRUPTION.DATASET}.csv")
+    df.to_csv(f"tuning_results_full_{cfg.CORRUPTION.DATASET}.csv")
+
 
 if __name__ == "__main__":
     main()
