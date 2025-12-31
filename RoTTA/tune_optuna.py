@@ -49,6 +49,8 @@ def testTimeAdaptation(cfg):
     processor.calculate()
 
     # logger.info(f"All Results\n{processor.info()}")
+
+    acc = processor.cumulative_acc()
     # Chuẩn hóa về 0-100
     if acc <= 1.0: acc *= 100.0
     error_rate = 100.0 - acc
