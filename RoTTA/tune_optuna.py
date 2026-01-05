@@ -73,9 +73,9 @@ def objective(trial):
     if not hasattr(trial_cfg, 'P_CUBE'):
         from yacs.config import CfgNode as CN
         trial_cfg.P_CUBE = CN()
-        trial_cfg.P_CUBE.FILTER = CN()
+        trial_cfg.DATA_FITER = CN()
         
-    trial_cfg.P_CUBE.FILTER.ENTROPY_FACTOR = entropy_factor
+    trial_cfg.DATA_FITER.ENTROPY_FACTOR = entropy_factor
     
     # Đảm bảo chạy full pipeline
     # Nếu file config của bạn để CORRUPTION.TYPE là 1 loại cụ thể, hãy sửa thành list tất cả hoặc logic tương ứng

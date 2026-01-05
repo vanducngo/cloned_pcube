@@ -31,7 +31,6 @@ P_CUBE:
     ODP_RATIO: 0.5         # Tỷ lệ tỉa cho ODP
     ODP_THRESHOLD: 0.2     # Ngưỡng ODP để loại bỏ
     # CERTAINTY_THRESHOLD đã có trong ADAPTER.RoTTA.LAMBDA_U, nhưng để riêng cho rõ ràng
-    ENTROPY_FACTOR: 0.35 
 
   # --- Siêu tham số cho Giai đoạn 2: Memory Bank ---
   BATCH_SIZE: 64

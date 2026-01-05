@@ -22,6 +22,7 @@ _C.MODEL.PROJECTION.FEA_DIM = 128
 # ----------------------------- Data filter options -------------------------- #
 _C.DATA_FITER = CN()
 _C.DATA_FITER.CONFIDENCE_FACTOR = 0.99
+_C.DATA_FITER.ENTROPY_FACTOR = 0.35
 
 # ----------------------------- Corruption options -------------------------- #
 _C.CORRUPTION = CN()
@@ -119,7 +120,6 @@ _C.P_CUBE.LAMBDA_U = 1.0
 _C.P_CUBE.FILTER = CN()
 _C.P_CUBE.FILTER.ODP_RATIO = 0.1
 _C.P_CUBE.FILTER.ODP_THRESHOLD = 0.2
-_C.P_CUBE.FILTER.ENTROPY_FACTOR = 0.35
 
 _C.P_CUBE.REPLAY = CN()
 _C.P_CUBE.REPLAY.NUM_AUG_CHECKS = 2

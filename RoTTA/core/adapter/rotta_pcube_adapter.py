@@ -20,7 +20,7 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
             # odp_threshold = 0.2,
             num_classes = cfg.CORRUPTION.NUM_CLASS,
             confidence_factor = cfg.DATA_FITER.CONFIDENCE_FACTOR,
-            entropy_factor = cfg.P_CUBE.FILTER.ENTROPY_FACTOR,
+            entropy_factor = cfg.DATA_FITER.ENTROPY_FACTOR,
 
             # memory_capacity = 64,
             # lambda_t = 1.0,
