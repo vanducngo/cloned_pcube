@@ -18,7 +18,7 @@ class P_Cube_Filter:
         )
 
         # Cổng 2: Lọc Nhất quán
-        self.consistency_filter = ConsistencyFilter(source_model)
+        self.consistency_filter = ConsistencyFilter(source_model, cfg.consistent_lambda_std, cfg.consistent_hard_floor)
 
         # Cổng 3: Lọc Chắc chắn
         self.certainty_filter = CertaintyFilter(

@@ -24,6 +24,9 @@ _C.DATA_FITER = CN()
 _C.DATA_FITER.CONFIDENCE_FACTOR = 0.99
 _C.DATA_FITER.ENTROPY_FACTOR = 0.35
 
+_C.DATA_FITER.CONSISTENT_LAMBDA_STD = 1.0
+_C.DATA_FITER.CONSISTENT_HARD_FLOOR = 0.6
+
 # ----------------------------- Corruption options -------------------------- #
 _C.CORRUPTION = CN()
 

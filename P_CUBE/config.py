@@ -7,8 +7,14 @@ class ModuleConfig:
     odp_ratio: float = 0.5
     odp_threshold: float = 0.2
     num_classes: int = 10
+
+    # Certainty Filter
     entropy_factor: float = 0.4 #0.35 
     confidence_factor: float = 0.99
+
+    # Consistent Filter
+    consistent_lambda_std: float = 1.0
+    consistent_hard_floor: float = 0.6
 
     memory_capacity: int = 64
     lambda_t: float = 1.0

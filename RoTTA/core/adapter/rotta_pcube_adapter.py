@@ -21,6 +21,11 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
             num_classes = cfg.CORRUPTION.NUM_CLASS,
             confidence_factor = cfg.DATA_FITER.CONFIDENCE_FACTOR,
             entropy_factor = cfg.DATA_FITER.ENTROPY_FACTOR,
+            
+            # Consistency filter
+            consistent_lambda_std= cfg.DATA_FITER.CONSISTENT_LAMBDA_STD,
+            consistent_hard_floor= cfg.DATA_FITER.CONSISTENT_HARD_FLOOR,
+
 
             # memory_capacity = 64,
             # lambda_t = 1.0,
