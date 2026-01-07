@@ -22,7 +22,7 @@ class CertaintyFilter:
             # log(C) là entropy tối đa (khi dự đoán là phân phối đều)
             self.threshold = threshold_factor * math.log(num_classes)
         
-        print(f"CertaintyFilter initialized with threshold = {self.threshold:.4f} (factor={threshold_factor}, num_classes={num_classes})")
+        print(f"CertaintyFilter initialized with threshold = {self.threshold:.4f} (factor={threshold_factor}, num_classes={num_classes}) and confidence_factor: {confidence_factor}")
 
     @torch.no_grad()
     def check_batch(self, batch_samples, current_model):
