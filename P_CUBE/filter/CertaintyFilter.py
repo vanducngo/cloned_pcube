@@ -40,13 +40,13 @@ class CertaintyFilter:
         
         # 1. Tín hiệu Chắc chắn Thống kê (Entropy)
         entropies = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
-        is_entropy_certain = (entropies < self.threshold)
-        # is_entropy_certain = True #TODO
+        # is_entropy_certain = (entropies < self.threshold)
+        is_entropy_certain = True #TODO
 
         # 2. Tín hiệu Độ tin cậy (Max Probability)
         max_probs, _ = torch.max(probs, dim=1)
-        # is_conf_high = (max_probs >= self.confidence_factor)
-        is_conf_high = True #TODO
+        is_conf_high = (max_probs >= self.confidence_factor)
+        # is_conf_high = True #TODO
 
         # Kết hợp cả hai để tạo Certainty Mask
         is_certain_mask = is_entropy_certain & is_conf_high
