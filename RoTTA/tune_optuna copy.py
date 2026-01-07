@@ -98,7 +98,10 @@ def run_tta_full_experiment(trial_cfg, trial):
 def objective(trial):
     # 1. Gợi ý tham số
     # Tìm kiếm entropy_factor từ 0.05 đến 1.0 (step 0.05)
-    entropy_factor = trial.suggest_float("entropy_factor", 0.05, 1.0, step=0.05)
+    # entropy_factor = trial.suggest_float("entropy_factor", 0.05, 1.0, step=0.05)
+    lambda_std = trial.suggest_float("lambda_std", 0.5, 2.0, step=0.25)
+    hard_floor = trial.suggest_float("hard_floor", 0.4, 0.7, step=0.05)
+
     
     # 2. Clone Config gốc
     trial_cfg = deepcopy(cfg)
@@ -112,7 +115,9 @@ def objective(trial):
         trial_cfg.P_CUBE = CN()
         trial_cfg.P_CUBE.FILTER = CN()
         
-    trial_cfg.P_CUBE.FILTER.ENTROPY_FACTOR = entropy_factor
+    # trial_cfg.P_CUBE.FILTER.ENTROPY_FACTOR = entropy_factor # TODO: Kiểm tra lại lần chạy với entropy factor
+    trial_cfg.DATA_FITER.CONSISTENT_LAMBDA_STD = lambda_std
+    trial_cfg.DATA_FITER.CONSISTENT_HARD_FLOOR = hard_floor
     
     # Đảm bảo các tham số khác chuẩn
     # trial_cfg.CORRUPTION.DATASET = 'cifar10' # Hoặc lấy từ args
