@@ -89,7 +89,8 @@ def objective(trial):
     
     # 3. Chạy Full Pipeline
     try:
-        print(f"\n[Trial {trial.number}] Running with entropy_factor={entropy_factor:.3f} ...")
+        # print(f"\n[Trial {trial.number}] Running with entropy_factor={entropy_factor:.3f} ...")
+        print(f"\n[Trial {trial.number}] Running with lambda_std={lambda_std:.3f} and hard_floor={hard_floor:.3f}...")
         error_rate = testTimeAdaptation(trial_cfg)
         print(f"[Trial {trial.number}] Result: Error Rate = {error_rate:.2f}%")
         return error_rate
