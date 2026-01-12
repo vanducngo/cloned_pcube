@@ -163,7 +163,7 @@ def main():
 
     # Setup DB
     db_url = "sqlite:///optuna_full_pipeline.db"
-    study_name = f"full_tuning_{cfg.CORRUPTION.DATASET}"
+    study_name = f"full_tuning_{cfg.CORRUPTION.DATASET}_gate_2"
     
     study = optuna.create_study(
         study_name=study_name,
