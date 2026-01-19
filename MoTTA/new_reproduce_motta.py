@@ -24,9 +24,11 @@ def reproduce():
     cfg.merge_from_file('config.yml')
 
     # 2. Load Model & Normalization
-    # Cực kỳ quan trọng: MoTTA cần ResNet50 bản chuẩn của torchvision
-    base_model = pt_models.resnet50(weights=pt_models.ResNet50_Weights.IMAGENET1K_V1)
-    backbone = normalize_model(base_model, mu=(0.485, 0.456, 0.406), sigma=(0.229, 0.224, 0.225))
+    # Cực kỳ quan trọng: MoTTA cần ResNet50 bản chuẩn của torchvision    
+    mu = (0.485, 0.456, 0.406)
+    sigma = (0.229, 0.224, 0.225)
+    backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
+
 
     # 3. Khởi tạo MoTTA (Nó sẽ tự gọi split_up_model và init_pruning bên trong __init__)
     model = MoTTA(model=backbone, **cfg.paras_adapt_model)
