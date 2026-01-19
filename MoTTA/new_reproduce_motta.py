@@ -4,7 +4,7 @@ import numpy as np
 from motta import MoTTA, normalize_model
 from optimizer import build_optimizer
 from imagenet_subsets import create_imagenet_subset, ALL_WNIDS, IMAGENET_R_WNIDS
-from stream_loader import MoTTAStream
+from MoTTA.new_stream_loader import MoTTAStream
 from torchvision import models as pt_models
 from yacs.config import CfgNode as cdict
 
