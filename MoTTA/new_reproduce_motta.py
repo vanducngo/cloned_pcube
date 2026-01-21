@@ -30,7 +30,7 @@ def reproduce():
     mu = (0.485, 0.456, 0.406)
     sigma = (0.229, 0.224, 0.225)
     backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
-
+    backbone.to(device) # Đưa backbone lên GPU trước
 
     # 3. Khởi tạo MoTTA (Nó sẽ tự gọi split_up_model và init_pruning bên trong __init__)
     model = MoTTA(model=backbone, **cfg.paras_adapt_model)
