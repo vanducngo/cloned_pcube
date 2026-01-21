@@ -39,8 +39,18 @@ def reproduce():
     target_ds = create_imagenet_subset("./Data", "imagenet_r", split="val")
     SH_WNIDS = [w for w in ALL_WNIDS if w not in IMAGENET_R_WNIDS]
     from imagenet_subsets import create_file_list
-    sh_noise_samples = create_file_list("./Data/imagenet", SH_WNIDS, split="val")
+    sh_noise_samples = create_file_list("./Data", SH_WNIDS, split="val")
     
+
+    # THÊM 2 DÒNG NÀY ĐỂ DEBUG:
+    print(f"Số lượng Target samples: {len(target_ds.samples)}")
+    print(f"Số lượng Noise samples (SH): {len(sh_noise_samples)}")
+
+    if len(sh_noise_samples) == 0:
+        print("LỖI: Không tìm thấy ảnh nhiễu SH. Vui lòng kiểm tra lại PATH_1K và cấu trúc thư mục val/.")
+        return # Dừng lại để sửa đường dẫn
+
+
     stream_dataset = MoTTAStream(target_ds.samples, sh_noise_samples, noise_ratio=0.2)
     loader = torch.utils.data.DataLoader(stream_dataset, batch_size=64, shuffle=False)
 
