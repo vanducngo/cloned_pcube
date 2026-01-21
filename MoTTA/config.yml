@@ -25,7 +25,7 @@ paras_adapt_model:
   pruning_module: conv
   metric_name: max_angle_change_feature_fc
   arch: Standard_R50
-  dataset: imagenet_c
+  dataset: imagenet_r
   enable_robustBN: false
   loss_name: NegWeightedMutualInformation_on_marginal
   paras_loss:
