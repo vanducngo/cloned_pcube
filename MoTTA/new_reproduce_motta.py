@@ -7,6 +7,8 @@ from imagenet_subsets import create_imagenet_subset, ALL_WNIDS, IMAGENET_R_WNIDS
 from MoTTA.new_stream_loader import MoTTAStream
 from torchvision import models as pt_models
 from yacs.config import CfgNode as cdict
+from torchvision import transforms
+
 
 def setup_seed(seed=2024):
     torch.manual_seed(seed)
@@ -50,8 +52,14 @@ def reproduce():
         print("LỖI: Không tìm thấy ảnh nhiễu SH. Vui lòng kiểm tra lại PATH_1K và cấu trúc thư mục val/.")
         return # Dừng lại để sửa đường dẫn
 
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        # Thêm Normalize nếu MoTTA yêu cầu (thường đã có trong normalize_model)
+    ])
+    stream_dataset = MoTTAStream(target_ds.samples, sh_noise_samples, noise_ratio=0.2, transform=transform)
 
-    stream_dataset = MoTTAStream(target_ds.samples, sh_noise_samples, noise_ratio=0.2)
     loader = torch.utils.data.DataLoader(stream_dataset, batch_size=64, shuffle=False)
 
     # 5. Vòng lặp Adaptation & Evaluation
