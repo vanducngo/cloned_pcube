@@ -36,10 +36,10 @@ def reproduce():
 
     # 4. Chuẩn bị Data (Dùng đúng tỷ lệ nhiễu 0.2)
     # SH Scenario
-    target_ds = create_imagenet_subset("/Users/admin/Working/Data-MoTTA/imagenet-r", "imagenet_r", split="")
+    target_ds = create_imagenet_subset("./Data/imagenet-r", "imagenet_r", split="")
     SH_WNIDS = [w for w in ALL_WNIDS if w not in IMAGENET_R_WNIDS]
     from imagenet_subsets import create_file_list
-    sh_noise_samples = create_file_list("/Users/admin/Working/Data-MoTTA/imagenet", SH_WNIDS, split="val")
+    sh_noise_samples = create_file_list("./Data/imagenet", SH_WNIDS, split="val")
     
     stream_dataset = MoTTAStream(target_ds.samples, sh_noise_samples, noise_ratio=0.2)
     loader = torch.utils.data.DataLoader(stream_dataset, batch_size=64, shuffle=False)
