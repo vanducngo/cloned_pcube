@@ -38,7 +38,7 @@ def reproduce():
 
     # 4. Chuẩn bị Data (Dùng đúng tỷ lệ nhiễu 0.2)
     # SH Scenario
-    target_ds = create_imagenet_subset("./Data", "imagenet_r", split="val")
+    target_ds = create_imagenet_subset("./Data", "imagenet_c", split="val")
     SH_WNIDS = [w for w in ALL_WNIDS if w not in IMAGENET_R_WNIDS]
     from imagenet_subsets import create_file_list
     sh_noise_samples = create_file_list("./Data", SH_WNIDS, split="val")
