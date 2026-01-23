@@ -7,13 +7,22 @@ from MoTTA.new_stream_loader import MoTTAStream
 from yacs.config import CfgNode as cdict
 from torchvision.datasets import ImageFolder
 
-class CleanImageFolder(ImageFolder):
+class RobustImageFolder(ImageFolder):
+    """
+    Tự động loại bỏ .ipynb_checkpoints và các file ẩn không phải class của ImageNet
+    """
     def find_classes(self, directory):
-        # Chỉ lấy các thư mục không bắt đầu bằng dấu chấm
-        classes = [d.name for d in os.scandir(directory) if d.is_dir() and not d.name.startswith('.')]
-        if not classes:
-            raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
+        # Chỉ lấy các thư mục bắt đầu bằng 'n' (đúng định dạng WNID của ImageNet)
+        # và thực sự là một thư mục
+        classes = [d.name for d in os.scandir(directory) 
+                   if d.is_dir() and d.name.startswith('n')]
         
+        if not classes:
+            # Nếu tập dữ liệu không bắt đầu bằng 'n' (như NINCO), 
+            # thì ta lấy tất cả trừ các thư mục ẩn
+            classes = [d.name for d in os.scandir(directory) 
+                       if d.is_dir() and not d.name.startswith('.')]
+            
         classes.sort()
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         return classes, class_to_idx
@@ -46,10 +55,12 @@ def reproduce_c():
         transforms.ToTensor(),
     ])
 
-    target_ds = CleanImageFolder(root=PATH_C, transform=transform)
-    
-    # Noise: NINCO
-    noise_ds = ImageFolder(root=PATH_NINCO, transform=transform)
+    print(f"Đang load dữ liệu từ: {PATH_C}")
+    target_ds = RobustImageFolder(root=PATH_C, transform=transform)
+    print(f"Số lượng lớp tìm thấy trong Target: {len(target_ds.classes)}")
+
+    noise_ds = RobustImageFolder(root=PATH_NINCO, transform=transform)
+    print(f"Số lượng lớp tìm thấy trong Noise: {len(noise_ds.classes)}")
     
     # Trộn luồng dữ liệu (20% NINCO)
     stream_dataset = MoTTAStream(target_ds.samples, noise_ds.samples, noise_ratio=0.2, transform=transform)
