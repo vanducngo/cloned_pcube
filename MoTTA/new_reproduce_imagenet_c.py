@@ -1,9 +1,22 @@
+import os
 import torch
 from torchvision import models as pt_models, transforms
 from torch.utils.data import DataLoader
 from motta import MoTTA, normalize_model
 from MoTTA.new_stream_loader import MoTTAStream
 from yacs.config import CfgNode as cdict
+from torchvision.datasets import ImageFolder
+
+class CleanImageFolder(ImageFolder):
+    def find_classes(self, directory):
+        # Chỉ lấy các thư mục không bắt đầu bằng dấu chấm
+        classes = [d.name for d in os.scandir(directory) if d.is_dir() and not d.name.startswith('.')]
+        if not classes:
+            raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
+        
+        classes.sort()
+        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+        return classes, class_to_idx
 
 def reproduce_c():
     device = torch.device("cuda")
@@ -33,9 +46,7 @@ def reproduce_c():
         transforms.ToTensor(),
     ])
 
-    # Target: ImageNet-C (Dùng ImageFolder vì nó có đủ 1000 thư mục con nxxxx)
-    from torchvision.datasets import ImageFolder
-    target_ds = ImageFolder(root=PATH_C, transform=transform)
+    target_ds = CleanImageFolder(root=PATH_C, transform=transform)
     
     # Noise: NINCO
     noise_ds = ImageFolder(root=PATH_NINCO, transform=transform)
