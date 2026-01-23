@@ -7,24 +7,41 @@ from MoTTA.new_stream_loader import MoTTAStream
 from yacs.config import CfgNode as cdict
 from torchvision.datasets import ImageFolder
 
-class RobustImageFolder(ImageFolder):
+import os
+from torchvision.datasets import ImageFolder
+from imagenet_subsets import ALL_WNIDS # Đảm bảo file này chứa list 1000 WNID gốc
+
+class ImageNet1KFolder(ImageFolder):
     """
-    Tự động loại bỏ .ipynb_checkpoints và các file ẩn không phải class của ImageNet
+    Dataset class thông minh giúp:
+    1. Loại bỏ các thư mục hệ thống như .ipynb_checkpoints.
+    2. Ánh xạ (Map) nhãn từ tên thư mục (nxxxx) về đúng ID chuẩn (0-999) của ImageNet-1K.
     """
     def find_classes(self, directory):
-        # Chỉ lấy các thư mục bắt đầu bằng 'n' (đúng định dạng WNID của ImageNet)
-        # và thực sự là một thư mục
+        # 1. Tìm tất cả thư mục con thực sự là class của ImageNet (bắt đầu bằng 'n')
+        # d.is_dir() giúp loại bỏ các file lẻ
+        # not d.name.startswith('.') giúp loại bỏ hoàn toàn .ipynb_checkpoints
         classes = [d.name for d in os.scandir(directory) 
                    if d.is_dir() and d.name.startswith('n')]
         
         if not classes:
-            # Nếu tập dữ liệu không bắt đầu bằng 'n' (như NINCO), 
-            # thì ta lấy tất cả trừ các thư mục ẩn
+            # Nếu là tập NINCO (không bắt đầu bằng 'n'), lấy các thư mục không ẩn
             classes = [d.name for d in os.scandir(directory) 
                        if d.is_dir() and not d.name.startswith('.')]
-            
+        
         classes.sort()
-        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+
+        # 2. Tạo bảng ánh xạ nhãn (Mapping)
+        class_to_idx = {}
+        for cls_name in classes:
+            if cls_name in ALL_WNIDS:
+                # Gán nhãn bằng đúng vị trí của nó trong 1000 lớp chuẩn
+                class_to_idx[cls_name] = ALL_WNIDS.index(cls_name)
+            else:
+                # Nếu không tìm thấy trong ImageNet-1K (như NINCO), gán nhãn tạm là -1
+                # (Vì MoTTA không tính độ chính xác trên nhãn NINCO)
+                class_to_idx[cls_name] = -1
+                
         return classes, class_to_idx
 
 def reproduce_c():
@@ -55,12 +72,18 @@ def reproduce_c():
         transforms.ToTensor(),
     ])
 
-    print(f"Đang load dữ liệu từ: {PATH_C}")
-    target_ds = RobustImageFolder(root=PATH_C, transform=transform)
-    print(f"Số lượng lớp tìm thấy trong Target: {len(target_ds.classes)}")
+    print(f"Đang load Target từ: {PATH_C}")
+    target_ds = ImageNet1KFolder(root=PATH_C, transform=transform)
+    print(f"Số lượng lớp Target tìm thấy: {len(target_ds.classes)}")
+    # In kiểm tra thử 1 lớp:
+    folder_name = target_ds.classes[0]
+    label_id = target_ds.class_to_idx[folder_name]
+    print(f"Ví dụ: Thư mục {folder_name} được gán nhãn chuẩn là: {label_id}")
 
-    noise_ds = RobustImageFolder(root=PATH_NINCO, transform=transform)
-    print(f"Số lượng lớp tìm thấy trong Noise: {len(noise_ds.classes)}")
+    # 2. Load tập Noise (NINCO)
+    print(f"Đang load Noise từ: {PATH_NINCO}")
+    noise_ds = ImageNet1KFolder(root=PATH_NINCO, transform=transform)
+
     
     # Trộn luồng dữ liệu (20% NINCO)
     stream_dataset = MoTTAStream(target_ds.samples, noise_ds.samples, noise_ratio=0.2, transform=transform)
