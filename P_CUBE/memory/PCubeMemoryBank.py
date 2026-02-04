@@ -19,10 +19,6 @@ class PCubeMemoryBank:
         
         self.kl_threshold = cfg.kl_threshold
 
-
-
-        
-
         self.use_aware_score = False
         self.use_adaptive_aging = False
         self.age_factor_bonus = 10
@@ -66,6 +62,29 @@ class PCubeMemoryBank:
         self.centroids_ema = None # Khởi tạo là None
         self.ema_momentum = cfg.macro_ema_momentum
         self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
+
+    def reset(self):
+        """
+        Khôi phục Memory Bank về trạng thái ban đầu (Rỗng).
+        Được gọi khi bắt đầu một Episode mới hoặc khi cần Clear Memory.
+        """
+        # 1. Xóa dữ liệu
+        self.data = [[] for _ in range(self.num_classes)]
+        
+        # 2. Reset các biến thống kê Vi mô (Micro)
+        self.ema_entropy = 0.0
+        
+        # 3. Reset các biến thống kê Vĩ mô (Macro)
+        self.updates_since_last_check = 0
+        self.centroids_ema = None
+        
+        # 4. Reset Peak Detector (quan trọng để xóa lịch sử Drift)
+        self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
+        
+        # 5. Reset Debug logs
+        self.kl_history_for_debug = []
+        
+        # print("PCubeMemoryBank has been reset."
 
     def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---

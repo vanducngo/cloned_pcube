@@ -2,7 +2,7 @@ import os
 import torch
 from torchvision import models as pt_models, transforms
 from torch.utils.data import DataLoader
-from motta import MoTTA, normalize_model
+from motta_aamp import MoTTA_AAMP, normalize_model
 from MoTTA.new_stream_loader import MoTTAStream
 from yacs.config import CfgNode as cdict
 from torchvision.datasets import ImageFolder
@@ -62,7 +62,7 @@ def reproduce_c():
     cfg.merge_from_file('config.yml')
     
     # Khởi tạo MoTTA
-    model = MoTTA(model=backbone, **cfg.paras_adapt_model)
+    model = MoTTA_AAMP(model=backbone, **cfg.paras_adapt_model)
     model.to(device)
 
     # 4. Tạo Dataset

@@ -1,7 +1,7 @@
 import torch
 import random
 import numpy as np
-from motta import MoTTA, normalize_model
+from motta_aamp import MoTTA_AAMP, normalize_model
 from optimizer import build_optimizer
 from imagenet_subsets import create_imagenet_subset, ALL_WNIDS, IMAGENET_R_WNIDS
 from MoTTA.new_stream_loader import MoTTAStream
@@ -33,7 +33,7 @@ def reproduce():
     backbone.to(device) # Đưa backbone lên GPU trước
 
     # 3. Khởi tạo MoTTA (Nó sẽ tự gọi split_up_model và init_pruning bên trong __init__)
-    model = MoTTA(model=backbone, **cfg.paras_adapt_model)
+    model = MoTTA_AAMP(model=backbone, **cfg.paras_adapt_model)
     model.to(device)
 
     # 4. Chuẩn bị Data (Dùng đúng tỷ lệ nhiễu 0.2)
