@@ -37,7 +37,7 @@ class MoTTA_AAMP(nn.Module):
                  episodic=False, memory_bank_type='uhus', freeze_top=True, use_buffer=True, fix_pruning_model=True,
                  pruning_strategy='l1_unstructured', pruning_module='conv', calculate_selection_mask=False,
                  category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each',
-                 # [CHANGE]
+                 # [Them moi]
                  entropy_factor=0.35, confidence_factor=3.0):
 
         super().__init__()

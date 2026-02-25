@@ -30,3 +30,7 @@ paras_adapt_model:
   loss_name: NegWeightedMutualInformation_on_marginal
   paras_loss:
     lambda_info: 0.
+  
+
+  confidence_factor: 0.33
+  threshold_factor: 0.35
