@@ -33,4 +33,4 @@ paras_adapt_model:
   
 
   confidence_factor: 0.33
-  threshold_factor: 0.35
+  entropy_factor: 0.35
