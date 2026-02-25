@@ -26,6 +26,8 @@ CORRUPTIONS = [
     "brightness", "contrast", "elastic_transform", "pixelate", "jpeg_compression"
 ]
 
+# CORRUPTIONS = ["zoom_blur"]
+
 # --- DATASET HELPER ---
 class ImageNet1KFolder(ImageFolder):
     def find_classes(self, directory):
@@ -83,7 +85,9 @@ def run_experiment(mode, corruption_type, device):
         cfg = cdict(new_allowed=True)
         cfg.merge_from_file('config.yml')
         backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
+        backbone.to(device)
         model = MoTTA(model=backbone, **cfg.paras_adapt_model)
+        model.to(device)
         model.eval() # MoTTA tự chuyển sang train() nội bộ khi cần
 
     elif mode == "MoTTA_AAMP":
@@ -91,7 +95,9 @@ def run_experiment(mode, corruption_type, device):
         cfg.merge_from_file('config.yml')
         # MoTTA_AAMP dùng hàm normalize riêng nếu cần (như trong code mẫu của bạn)
         backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
+        backbone.to(device)
         model = MoTTA_AAMP(model=backbone, **cfg.paras_adapt_model)
+        model.to(device)
         model.eval()
 
     model.to(device)
@@ -100,6 +106,7 @@ def run_experiment(mode, corruption_type, device):
     correct = 0
     total = 0
     
+
     try:
         for i, (images, labels, is_noise) in enumerate(loader):
             images, labels = images.to(device), labels.to(device)
@@ -121,7 +128,7 @@ def run_experiment(mode, corruption_type, device):
                 total += clean_idx.sum().item()
                 
             # Optional: Print progress
-            # if i % 50 == 0: print(f"  Batch {i}...")
+            if i % 5 == 0: print(f"  Batch {i}...")
             
     except Exception as e:
         print(f"Error at {corruption_type}: {e}")
@@ -139,7 +146,7 @@ def run_experiment(mode, corruption_type, device):
 
 # --- MAIN LOOP ---
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     results = []
     
     # Header cho CSV
@@ -154,12 +161,12 @@ def main():
         row = [corruption]
         
         # 1. Chạy Source Only
-        err_src = run_experiment("Source_Only", corruption, device)
-        row.append(f"{err_src:.2f}" if isinstance(err_src, float) else err_src)
+        # err_src = run_experiment("Source_Only", corruption, device)
+        # row.append(f"{err_src:.2f}" if isinstance(err_src, float) else err_src)
         
         # 2. Chạy MoTTA Gốc
-        err_orig = run_experiment("MoTTA_Original", corruption, device)
-        row.append(f"{err_orig:.2f}" if isinstance(err_orig, float) else err_orig)
+        # err_orig = run_experiment("MoTTA_Original", corruption, device)
+        # row.append(f"{err_orig:.2f}" if isinstance(err_orig, float) else err_orig)
         
         # 3. Chạy MoTTA AAMP
         err_aamp = run_experiment("MoTTA_AAMP", corruption, device)

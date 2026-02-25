@@ -36,9 +36,7 @@ class MoTTA_AAMP(nn.Module):
                  enable_robustBN, loss_name, paras_loss, steps=1,
                  episodic=False, memory_bank_type='uhus', freeze_top=True, use_buffer=True, fix_pruning_model=True,
                  pruning_strategy='l1_unstructured', pruning_module='conv', calculate_selection_mask=False,
-                 category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each',
-                 # [Them moi]
-                 entropy_factor=0.35, confidence_factor=3.0):
+                 category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each'):
 
         super().__init__()
         self.model = model
@@ -65,8 +63,7 @@ class MoTTA_AAMP(nn.Module):
         p_cube_cfg = ModuleConfig(
             classifier_name='fc',
             num_classes=num_classes,
-            confidence_factor=confidence_factor,
-            entropy_factor=entropy_factor,
+            confidence_factor=confidence_threshold,
         )
 
         self.p_cube = P_CUBE(cfg=p_cube_cfg, model_architecture=model)
