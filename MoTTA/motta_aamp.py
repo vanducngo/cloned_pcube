@@ -237,7 +237,8 @@ class MoTTA_AAMP(nn.Module):
         loss_fn = self.loss_fn
 
         if getattr(self, 'use_buffer', False):
-            sup_data, sup_uncertainty = self.memory.get_memory()
+            # sup_data, sup_uncertainty = self.memory.get_memory()
+            sup_data, sup_uncertainty = self.p_cube.memory.get_memory()
         else:
             sup_data = filtered_data
 
