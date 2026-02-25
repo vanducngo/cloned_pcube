@@ -192,5 +192,5 @@ def reproduce_motta_goc():
     print(f"\n[KẾT QUẢ CUỐI CÙNG] Error Rate: {100 - (correct/total)*100:.2f}%")
 
 if __name__ == '__main__':
-    # reproduce_c()
-    reproduce_motta_goc()
+    reproduce_c()
+    # reproduce_motta_goc()
