@@ -1,1 +1,11 @@
 Corruption,Source_Only,MoTTA_Original,MoTTA_AAMP
+gaussian_noise,94.32,70.42,68.72
+shot_noise,93.51,68.27,66.64
+impulse_noise,93.56,68.86,66.95
+defocus_blur,84.97,71.57,68.24
+glass_blur,91.77,73.81,71.52
+motion_blur,86.70,59.47,58.53
+zoom_blur,77.14,51.21,50.86
+snow,84.41,53.28,52.19
+frost,79.56,59.41,57.74
+fog,77.79,43.95,43.08
