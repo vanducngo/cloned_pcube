@@ -143,6 +143,12 @@ def run_experiment(mode, corruption_type, device):
                 correct += (preds == labels[clean_idx]).sum().item()
                 total += clean_idx.sum().item()
                 
+            if wandb.run is not None:
+                batch_acc = (preds == labels[clean_idx]).float().mean().item() * 100
+                wandb.log({
+                    "acc/batch_accuracy": batch_acc,
+                    "step": i # Optional
+                }, commit=True) # Kích hoạt đẩy dữ liệu lên
             # Optional: Print progress
             if i % 5 == 0: print(f"  Batch {i}...")
             
