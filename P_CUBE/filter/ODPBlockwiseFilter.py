@@ -6,6 +6,9 @@ from sklearn.mixture import GaussianMixture
 import copy
 import numpy as np
 
+import time  # [LogPerformance]
+import wandb # [LogPerformance]
+
 """
 Bộ lọc ODP (Output Difference under Pruning) hoạt động theo từng khối (Block-wise).
 Mục đích: Phát hiện các mẫu outlier hoặc nhiễu bằng cách đo lường sự ổn định của
@@ -152,6 +155,10 @@ class ODPBlockwiseFilter:
         """
         Kiểm tra một batch mẫu và trả về một mask boolean cho biết mẫu nào đáng tin cậy.
         """
+
+        # [LogPerformance] Bắt đầu bấm giờ
+        start_time = time.time()
+
         current_model.eval()
         
         # --- Bước 1: Forward Pass Gốc và Thu thập Dữ liệu bằng Hooks ---
@@ -238,6 +245,23 @@ class ODPBlockwiseFilter:
         # 4. Lọc
         is_stable_mask = (final_odp_scores <= current_threshold)
         
+        # [LogPerformance] Kết thúc bấm giờ và Log WandB
+        if wandb.run is not None:
+            # 1. Log Thời gian & VRAM
+            end_time = time.time()
+            duration_ms = (end_time - start_time) * 1000
+            max_vram = torch.cuda.max_memory_allocated() / (1024 * 1024) # MB
+            
+            wandb.log({
+                "efficiency/latency_ms": duration_ms,
+                "efficiency/vram_mb": max_vram,
+                "odp_stats/batch_mean": final_odp_scores.mean().item(),
+                "odp_stats/batch_std": final_odp_scores.std().item(),
+                "odp_stats/threshold": current_threshold if isinstance(current_threshold, float) else current_threshold.item(),
+                "odp_stats/pass_rate": is_stable_mask.float().mean().item()
+            }, commit=False)
+
+
         return is_stable_mask, final_odp_scores
 
         # Xác định ngưỡng lọc

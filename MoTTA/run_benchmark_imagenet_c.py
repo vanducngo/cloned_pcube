@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from yacs.config import CfgNode as cdict
 from torchvision.datasets import ImageFolder
 from imagenet_subsets import ALL_WNIDS
+import wandb
 
 # Import các modules của bạn
 from motta import MoTTA, normalize_model
@@ -20,21 +21,21 @@ SEVERITY = 5
 
 # Danh sách 15 loại nhiễu của ImageNet-C
 CORRUPTIONS = [
-    # "gaussian_noise", 
+    "gaussian_noise", 
     # "shot_noise", 
     # "impulse_noise",
-    # "defocus_blur", 
+    "defocus_blur", 
     # "glass_blur", 
     # "motion_blur", 
     # "zoom_blur",
-    # "snow", 
+    "snow", 
     # "frost", 
     # "fog",
-    "brightness",
+    # "brightness",
     "contrast",
-    "elastic_transform", 
-    "pixelate", 
-    "jpeg_compression"
+    # "elastic_transform", 
+    # "pixelate", 
+    # "jpeg_compression"
 ]
 
 # CORRUPTIONS = ["zoom_blur"]
@@ -78,6 +79,10 @@ def get_dataloader(corruption_type):
 # --- HÀM CHẠY EXPERIMENT CHUNG ---
 def run_experiment(mode, corruption_type, device):
     print(f"\n[{mode}] Running on {corruption_type}...")
+
+
+    wandb.init(project="MoTTA_Benchmark", name="ODP_Comparison_Time")
+
     
     # 1. Prepare Data
     loader = get_dataloader(corruption_type)
@@ -172,8 +177,8 @@ def main():
         row = [corruption]
         
         # 1. Chạy Source Only
-        err_src = run_experiment("Source_Only", corruption, device)
-        row.append(f"{err_src:.2f}" if isinstance(err_src, float) else err_src)
+        # err_src = run_experiment("Source_Only", corruption, device)
+        # row.append(f"{err_src:.2f}" if isinstance(err_src, float) else err_src)
         
         # 2. Chạy MoTTA Gốc
         err_orig = run_experiment("MoTTA_Original", corruption, device)

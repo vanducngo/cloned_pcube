@@ -18,6 +18,9 @@ from memory_bank import DropMemoryBank
 from loss import NegWeightedMutualInformation_on_marginal
 from optimizer import build_optimizer
 
+import time # [LogPerformance]
+import wandb # [LogPerformance]
+
 pruning_methods = {
     "l1_unstructured": prune.l1_unstructured,
     "ln_structured": prune.ln_structured,
@@ -315,6 +318,10 @@ class MoTTA(nn.Module):
 
     @torch.no_grad()
     def eval_pruning(self, x):
+        # [LogPerformance] Start Timer & Reset VRAM max stats
+        torch.cuda.reset_peak_memory_stats()
+        start_time = time.time()
+
         short_version = True
         feature_extractor = self.feature_extractor
         feature_extractor_prune = self.feature_extractor_prune
@@ -323,7 +330,9 @@ class MoTTA(nn.Module):
         feature_extractor.eval()
         feature_extractor_prune.eval()
 
+        # Forward Pass 1
         feature = feature_extractor(x)
+        # Forward Pass 2 (Pruned)
         feature_prune = feature_extractor_prune(x)
 
         if short_version:
@@ -333,6 +342,23 @@ class MoTTA(nn.Module):
             max_angle_change_feature_fc = torch.max(torch.abs(torch.acos(cos_sim) - torch.acos(cos_sim_prune)), dim=1)[
                 0]
             max_angle_change_feature_fc = max_angle_change_feature_fc / math.pi * 180  # change to angle unit
+
+            # [LogPerformance] End Timer & Log
+            end_time = time.time()
+            duration_ms = (end_time - start_time) * 1000
+            max_vram = torch.cuda.max_memory_allocated() / (1024 * 1024) # MB
+
+            # [LogPerformance] Log WandB (Tương thích với tên biến bên Blockwise để dễ vẽ chart)
+            if wandb.run is not None:
+                wandb.log({
+                    "efficiency/latency_ms": duration_ms,
+                    "efficiency/vram_mb": max_vram,
+                    "odp_stats/batch_mean": max_angle_change_feature_fc.mean().item(),
+                    "odp_stats/batch_std": max_angle_change_feature_fc.std().item(),
+                    # MoTTA gốc dùng ngưỡng tĩnh (ví dụ 0.2 hoặc config), bạn có thể log nó ra
+                    # "odp_stats/threshold": self.odp_threshold, 
+                }, commit=False)
+                
             return dict(max_angle_change_feature_fc=max_angle_change_feature_fc.detach().cpu())
 
         logits = classifier(feature)

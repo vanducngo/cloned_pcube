@@ -25,7 +25,6 @@ pruning_methods = {
     "random_structured": prune.random_structured
 }
 
-
 class MoTTA(nn.Module):
     def __init__(self, model, paras_optim, capacity, num_classes, bn_alpha, temp_factor,
                  update_frequency, confidence_threshold, uncertainty_threshold, prune_ratio, arch, dataset,
