@@ -14,7 +14,6 @@ class P_Cube_Filter:
         self.odp_filter = ODPBlockwiseFilter(
             model_architecture=model_architecture,
             pruning_ratio=cfg.odp_ratio,
-            threshold=cfg.odp_threshold
         )
 
         # Cổng 2: Lọc Nhất quán
