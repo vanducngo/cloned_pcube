@@ -1,19 +1,17 @@
-import os
 import math
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Tuple, TypeVar
+from typing import Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import torch.jit
 from torch.nn.utils import prune
 
 from easydict import EasyDict as edict
 
-from robustbench.model_zoo.architectures.utils_architectures import normalize_model, ImageNormalizer
+from robustbench.model_zoo.architectures.utils_architectures import ImageNormalizer
 from memory_bank import DropMemoryBank
 from loss import NegWeightedMutualInformation_on_marginal
 from optimizer import build_optimizer

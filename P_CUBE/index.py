@@ -5,7 +5,6 @@ import torch.nn as nn
 from pprint import pprint
 
 from P_CUBE.config import ModuleConfig
-from P_CUBE.features import get_features_from_model
 from .filter.index import P_Cube_Filter
 from .memory.PCubeMemoryBank import PCubeMemoryBank
 
@@ -48,18 +47,10 @@ class P_CUBE(nn.Module):
             clean_samples = batch_data[clean_mask]
             
             # Lấy các thông tin cần thiết từ các mẫu sạch
-            classifier_name = self.cfg.classifier_name # ví dụ: 'fc' hoặc 'classifier'
-            clean_features = get_features_from_model(teacher_model, clean_samples, classifier_name)
-
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
-            clean_pseudo_labels = clean_probs.argmax(dim=1)
             clean_entropies = -torch.sum(clean_probs * torch.log(clean_probs + 1e-8), dim=1)
             
             # Thêm batch mẫu sạch vào bộ nhớ.
             # Logic quản lý vĩ mô (check domain shift) đã được đóng gói bên trong hàm này.
-            self.memory.add_clean_samples_batch(clean_samples, 
-                                                 clean_features, 
-                                                 clean_pseudo_labels, 
-                                                 clean_entropies,
-                                                 teacher_model)
+            self.memory.add_clean_samples_batch(clean_samples, clean_entropies)

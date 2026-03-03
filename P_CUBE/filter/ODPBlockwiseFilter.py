@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F
-from sklearn.mixture import GaussianMixture
 import copy
-import numpy as np
 
 import time  # [LogPerformance]
 import wandb # [LogPerformance]

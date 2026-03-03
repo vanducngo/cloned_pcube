@@ -1,11 +1,9 @@
 import math
 import random
-from torch import nn
 import torch
 
 from P_CUBE.config import ModuleConfig
 
-from .utils import calculate_centroid_distance, calculate_centroids_from_buffer, calculate_stats_on_buffer, ema_update, ema_update_centroids, kl_divergence
 from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
@@ -86,7 +84,7 @@ class PCubeMemoryBank:
         
         # print("PCubeMemoryBank has been reset."
 
-    def add_clean_samples_batch(self, clean_samples, clean_features, clean_pseudo_labels, clean_entropies, current_model):
+    def add_clean_samples_batch(self, clean_samples, clean_entropies):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
         # self._cleanup_expired_items()
 
@@ -118,8 +116,6 @@ class PCubeMemoryBank:
         for i in range(len(clean_samples)):
             new_item = MemoryItem(
                 sample=clean_samples[i].cpu(), 
-                feature=clean_features[i].cpu() if clean_features is not None else None,
-                pseudo_label=clean_pseudo_labels[i].item(), 
                 uncertainty=clean_entropies[i].item()
             )
 
@@ -127,13 +123,6 @@ class PCubeMemoryBank:
             # --- Bước 3: Cập nhật Trạng thái Chung ---
             self.add_age(aging_speed)
         
-        # --- Bước 4: Quản lý Vĩ mô (Định kỳ) ---
-        # self.updates_since_last_check += len(clean_samples)
-        # if self.updates_since_last_check >= self.kl_check_interval:
-        #     # Truyền model hiện tại vào để có thể tính stats
-        #     self._check_for_domain_shift()
-        #     self.updates_since_last_check = 0
-
     def _cleanup_expired_items(self):
         """Loại bỏ các mẫu có tuổi vượt quá MAX_AGE."""
         for i in range(self.num_classes):
@@ -152,41 +141,41 @@ class PCubeMemoryBank:
             if self.remove_instance(target_class, new_score):
                 self.data[target_class].append(new_item)
             
-    def _check_for_domain_shift(self):
-        """
-        Thực hiện logic phát hiện thay đổi miền và kích hoạt lão hóa cấp tốc.
-        """
-        if self.get_occupancy() < self.kl_check_interval:
-            return
+    # def _check_for_domain_shift(self):
+    #     """
+    #     Thực hiện logic phát hiện thay đổi miền và kích hoạt lão hóa cấp tốc.
+    #     """
+    #     if self.get_occupancy() < self.kl_check_interval:
+    #         return
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+    #     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # 1. Tính tâm lớp tức thời từ bộ đệm
-        centroids_snapshot = calculate_centroids_from_buffer(
-            [item for sublist in self.data for item in sublist], 
-            self.num_classes, 
-            self.feature_dim, 
-            device
-        )
+    #     # 1. Tính tâm lớp tức thời từ bộ đệm
+    #     centroids_snapshot = calculate_centroids_from_buffer(
+    #         [item for sublist in self.data for item in sublist], 
+    #         self.num_classes, 
+    #         self.feature_dim, 
+    #         device
+    #     )
 
-        # 2. Cập nhật và tính khoảng cách
-        if self.centroids_ema is None: # Khởi tạo lần đầu
-            self.centroids_ema = centroids_snapshot
-            return 
+    #     # 2. Cập nhật và tính khoảng cách
+    #     if self.centroids_ema is None: # Khởi tạo lần đầu
+    #         self.centroids_ema = centroids_snapshot
+    #         return 
         
-        distance = calculate_centroid_distance(centroids_snapshot, self.centroids_ema, distance_metric='l2')
-        self.centroids_ema = ema_update_centroids(self.centroids_ema, centroids_snapshot, self.ema_momentum)
+    #     distance = calculate_centroid_distance(centroids_snapshot, self.centroids_ema, distance_metric='l2')
+    #     self.centroids_ema = ema_update_centroids(self.centroids_ema, centroids_snapshot, self.ema_momentum)
 
-        # 3. Phát hiện đỉnh và hành động
-        if self.peak_detector.is_peak(distance):
-            print(f"Domain shift detected! Centroid distance peak: {distance:.4f}. Triggering Accelerated Aging.")
-            self._accelerated_aging()
+    #     # 3. Phát hiện đỉnh và hành động
+    #     if self.peak_detector.is_peak(distance):
+    #         print(f"Domain shift detected! Centroid distance peak: {distance:.4f}. Triggering Accelerated Aging.")
+    #         self._accelerated_aging()
 
-    def _accelerated_aging(self):
-        # """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
-        for class_list in self.data:
-            for item in class_list:
-                item.age *= self.acceleration_factor
+    # def _accelerated_aging(self):
+    #     # """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
+    #     for class_list in self.data:
+    #         for item in class_list:
+    #             item.age *= self.acceleration_factor
 
     def get_occupancy(self):
         occupancy = 0
