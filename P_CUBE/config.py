@@ -5,7 +5,6 @@ from typing import Tuple
 class ModuleConfig:
     classifier_name: str = ''
     odp_ratio: float = 0.5
-    odp_threshold: float = 0.2
     num_classes: int = 10
 
     # Certainty Filter

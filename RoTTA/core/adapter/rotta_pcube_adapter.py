@@ -16,8 +16,6 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
 
         moduleConfig = ModuleConfig(
             classifier_name = cfg.MODEL.CLASSIFIER_NAME,
-            # odp_ratio= 0.5,
-            # odp_threshold = 0.2,
             num_classes = cfg.CORRUPTION.NUM_CLASS,
             confidence_factor = cfg.DATA_FITER.CONFIDENCE_FACTOR,
             entropy_factor = cfg.DATA_FITER.ENTROPY_FACTOR,
