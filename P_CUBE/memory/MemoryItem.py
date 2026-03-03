@@ -1,6 +1,7 @@
 class MemoryItem:
-    def __init__(self, sample, uncertainty):
+    def __init__(self, sample, pseudo_label, uncertainty):
         self.sample = sample
+        self.pseudo_label = pseudo_label
         self.uncertainty = uncertainty
         self.age = 0
 

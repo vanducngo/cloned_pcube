@@ -61,7 +61,6 @@ class MoTTA_AAMP(nn.Module):
          # [CHANGE]
         # -----------------------------------------------------------
         p_cube_cfg = ModuleConfig(
-            classifier_name='fc',
             num_classes=num_classes,
             confidence_factor=confidence_threshold,
         )

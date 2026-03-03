@@ -1,38 +1,24 @@
 import math
-import random
 import torch
 
 from P_CUBE.config import ModuleConfig
-
-from P_CUBE.purgeable_memory_bank import OnlinePeakDetector
 from .MemoryItem import MemoryItem
 
 class PCubeMemoryBank:
-    def __init__(self, cfg: ModuleConfig, model_architecture):
+    def __init__(self, cfg: ModuleConfig):
         self.capacity = cfg.memory_capacity
         self.num_classes = cfg.num_classes
         self.per_class_capacity = self.capacity / self.num_classes
         self.lambda_t = cfg.lambda_t
         self.lambda_u = cfg.lambda_u
         
-        self.kl_threshold = cfg.kl_threshold
-
-        self.use_aware_score = False
         self.use_adaptive_aging = False
         self.age_factor_bonus = 10
         self.base_aging_speed = 1
-        self.lambda_d = 2
 
-        # Nhiệt độ (temperature) T để kiểm soát độ nhọn của phân phối
-        # T > 1 -> mềm hơn, T < 1 -> nhọn hơn
-        self.sofmax_dist_temperature = 2
-
-        # Khởi tạo một biến để theo dõi entropy
+        # use_adaptive_aging - Khởi tạo một biến để theo dõi entropy
         self.ema_entropy = 0.0
         self.alpha_entropy = 0.99 # Hệ số EMA cho entropy
-
-        # Debug
-        self.kl_history_for_debug = [] 
 
         print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={self.capacity}")
         
@@ -40,26 +26,6 @@ class PCubeMemoryBank:
 
         # --- Các thành phần cho Giai đoạn 2 (Quản lý Vòng đời) ---
         self.max_age = cfg.max_age
-        self.acceleration_factor = cfg.acceleration_factor
-        self.kl_check_interval = cfg.macro_check_interval
-        self.updates_since_last_check = 0
-        
-        # Cho việc phát hiện thay đổi miền
-        try:
-            if hasattr(model_architecture, 'fc'):
-                self.feature_dim = model_architecture.fc.in_features
-            elif hasattr(model_architecture, 'classifier'):
-                self.feature_dim = model_architecture.classifier.in_features
-            else: # Fallback
-                self.feature_dim = list(model_architecture.parameters())[-1].shape[1]
-        except:
-             # Fallback cứng nếu không tìm được
-            self.feature_dim = 2048 
-            print(f"Warning: Could not infer feature_dim. Defaulting to {self.feature_dim}")
-            
-        self.centroids_ema = None # Khởi tạo là None
-        self.ema_momentum = cfg.macro_ema_momentum
-        self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
 
     def reset(self):
         """
@@ -72,19 +38,9 @@ class PCubeMemoryBank:
         # 2. Reset các biến thống kê Vi mô (Micro)
         self.ema_entropy = 0.0
         
-        # 3. Reset các biến thống kê Vĩ mô (Macro)
-        self.updates_since_last_check = 0
-        self.centroids_ema = None
-        
-        # 4. Reset Peak Detector (quan trọng để xóa lịch sử Drift)
-        self.peak_detector = OnlinePeakDetector(window_size=10, threshold=self.kl_threshold, influence=0.5)
-        
-        # 5. Reset Debug logs
-        self.kl_history_for_debug = []
-        
-        # print("PCubeMemoryBank has been reset."
+        print("PCubeMemoryBank has been reset.")
 
-    def add_clean_samples_batch(self, clean_samples, clean_entropies):
+    def add_clean_samples_batch(self, clean_samples, clean_pseudo_labels, clean_entropies):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
         # self._cleanup_expired_items()
 
@@ -116,6 +72,7 @@ class PCubeMemoryBank:
         for i in range(len(clean_samples)):
             new_item = MemoryItem(
                 sample=clean_samples[i].cpu(), 
+                pseudo_label=clean_pseudo_labels[i].item(), 
                 uncertainty=clean_entropies[i].item()
             )
 
@@ -128,54 +85,11 @@ class PCubeMemoryBank:
         for i in range(self.num_classes):
             self.data[i] = [item for item in self.data[i] if item.age <= self.max_age]
 
-    def _manage_and_add_single_item(self, new_item):
-        if self.use_aware_score:
-            current_softmax_dist = self._calculate_softmax_dist()
-            target_class = new_item.pseudo_label
-            new_score = self.heuristic_score_v2(age=0, uncertainty=new_item.uncertainty, softmax_dist = current_softmax_dist, cls=target_class)
-            if self.remove_instance_v2(target_class, new_score, current_softmax_dist):
-                self.data[target_class].append(new_item)
-        else:
-            target_class = new_item.pseudo_label
-            new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
-            if self.remove_instance(target_class, new_score):
-                self.data[target_class].append(new_item)
-            
-    # def _check_for_domain_shift(self):
-    #     """
-    #     Thực hiện logic phát hiện thay đổi miền và kích hoạt lão hóa cấp tốc.
-    #     """
-    #     if self.get_occupancy() < self.kl_check_interval:
-    #         return
-
-    #     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    #     # 1. Tính tâm lớp tức thời từ bộ đệm
-    #     centroids_snapshot = calculate_centroids_from_buffer(
-    #         [item for sublist in self.data for item in sublist], 
-    #         self.num_classes, 
-    #         self.feature_dim, 
-    #         device
-    #     )
-
-    #     # 2. Cập nhật và tính khoảng cách
-    #     if self.centroids_ema is None: # Khởi tạo lần đầu
-    #         self.centroids_ema = centroids_snapshot
-    #         return 
-        
-    #     distance = calculate_centroid_distance(centroids_snapshot, self.centroids_ema, distance_metric='l2')
-    #     self.centroids_ema = ema_update_centroids(self.centroids_ema, centroids_snapshot, self.ema_momentum)
-
-    #     # 3. Phát hiện đỉnh và hành động
-    #     if self.peak_detector.is_peak(distance):
-    #         print(f"Domain shift detected! Centroid distance peak: {distance:.4f}. Triggering Accelerated Aging.")
-    #         self._accelerated_aging()
-
-    # def _accelerated_aging(self):
-    #     # """Nhân tuổi của tất cả các mẫu trong bộ đệm lên một hệ số."""
-    #     for class_list in self.data:
-    #         for item in class_list:
-    #             item.age *= self.acceleration_factor
+    def _manage_and_add_single_item(self, new_item: MemoryItem):
+        target_class = new_item.pseudo_label
+        new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
+        if self.remove_instance(target_class, new_score):
+            self.data[target_class].append(new_item)
 
     def get_occupancy(self):
         occupancy = 0
@@ -202,43 +116,7 @@ class PCubeMemoryBank:
                 return self.remove_from_classes(majority_classes, score)
         else:
             return self.remove_from_classes([cls], score)
-        
-    def remove_instance_v2(self, cls, score, current_softmax_dist):
-        class_list = self.data[cls]
-        class_occupied = len(class_list)
-        all_occupancy = self.get_occupancy()
-        if class_occupied < self.per_class_capacity:
-            if all_occupancy < self.capacity:
-                return True
-            else:
-                majority_classes = self.get_all_classes()
-                return self.remove_from_classes_v2(majority_classes, score, current_softmax_dist)
-        else:
-            return self.remove_from_classes_v2([cls], score, current_softmax_dist)
     
-    def remove_from_classes_v2(self, classes: list[int], score_base, current_softmax_dist):
-        max_class = None
-        max_index = None
-        max_score = None
-        for cls in classes:
-            for idx, item in enumerate(self.data[cls]):
-                uncertainty = item.uncertainty
-                age = item.age
-                score = self.heuristic_score_v2(age=age, uncertainty=uncertainty, softmax_dist=current_softmax_dist, cls=cls)
-                if max_score is None or score >= max_score:
-                    max_score = score
-                    max_index = idx
-                    max_class = cls
-
-        if max_class is not None:
-            if max_score > score_base:
-                self.data[max_class].pop(max_index)
-                return True
-            else:
-                return False
-        else:
-            return True
-
     def remove_from_classes(self, classes: list[int], score_base):
         max_class = None
         max_index = None
@@ -282,24 +160,17 @@ class PCubeMemoryBank:
     def heuristic_score(self, age, uncertainty):
         return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
 
-    def heuristic_score_v2(self, age, uncertainty, softmax_dist, cls):
-        timelineness_score = self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
-        uncertainty_score = self.lambda_u * uncertainty / math.log(self.num_classes)
-        penalty_score = self.lambda_d * softmax_dist[cls].item()
-
-        return timelineness_score + uncertainty_score + penalty_score
-
     def add_age(self, aging_speed):
         for class_list in self.data:
             for item in class_list:
                 item.increase_age(aging_speed)
         return
                 
-    def get_replay_batch(self, batch_size):
-        all_items = [item for class_list in self.data for item in class_list]
-        if len(all_items) < batch_size:
-            return None
-        return random.sample(all_items, batch_size)
+    # def get_replay_batch(self, batch_size):
+    #     all_items = [item for class_list in self.data for item in class_list]
+    #     if len(all_items) < batch_size:
+    #         return None
+    #     return random.sample(all_items, batch_size)
     
     def get_memory(self):
         tmp_data = []
@@ -313,7 +184,3 @@ class PCubeMemoryBank:
         tmp_age = [x / self.capacity for x in tmp_age]
 
         return tmp_data, tmp_age
-    
-    def _calculate_softmax_dist(self):
-        dist = torch.tensor([len(c) for c in self.data], dtype=torch.float32)
-        return torch.softmax(dist / self.sofmax_dist_temperature, dim=0)

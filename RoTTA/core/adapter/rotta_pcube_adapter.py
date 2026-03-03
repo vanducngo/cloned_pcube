@@ -15,7 +15,6 @@ class RoTTA_PCUBE_ADPATER(BaseAdapter):
         super(RoTTA_PCUBE_ADPATER, self).__init__(cfg, model, optimizer)
 
         moduleConfig = ModuleConfig(
-            classifier_name = cfg.MODEL.CLASSIFIER_NAME,
             num_classes = cfg.CORRUPTION.NUM_CLASS,
             confidence_factor = cfg.DATA_FITER.CONFIDENCE_FACTOR,
             entropy_factor = cfg.DATA_FITER.ENTROPY_FACTOR,

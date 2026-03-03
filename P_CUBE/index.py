@@ -26,7 +26,7 @@ class P_CUBE(nn.Module):
         
         # Giai đoạn 2: Memory Bank
         # Truyền toàn bộ cfg vào để MemoryBank tự lấy các siêu tham số cần thiết
-        self.memory = PCubeMemoryBank(cfg=cfg, model_architecture=model_architecture)
+        self.memory = PCubeMemoryBank(cfg=cfg)
 
     def reset(self):
         self.memory.reset()
@@ -47,10 +47,11 @@ class P_CUBE(nn.Module):
             clean_samples = batch_data[clean_mask]
             
             # Lấy các thông tin cần thiết từ các mẫu sạch
+            clean_pseudo_labels = clean_probs.argmax(dim=1)
             clean_outputs = teacher_model(clean_samples)
             clean_probs = F.softmax(clean_outputs, dim=1)
             clean_entropies = -torch.sum(clean_probs * torch.log(clean_probs + 1e-8), dim=1)
             
             # Thêm batch mẫu sạch vào bộ nhớ.
             # Logic quản lý vĩ mô (check domain shift) đã được đóng gói bên trong hàm này.
-            self.memory.add_clean_samples_batch(clean_samples, clean_entropies)
+            self.memory.add_clean_samples_batch(clean_samples,clean_pseudo_labels, clean_entropies)
