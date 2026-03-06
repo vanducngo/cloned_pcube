@@ -30,3 +30,11 @@ paras_adapt_model:
   loss_name: NegWeightedMutualInformation_on_marginal
   paras_loss:
     lambda_info: 0.
+
+P_CUBE:
+  FILTER:
+    ODP_TYPE: "blockwise"  # Chọn: "blockwise" hoặc "original"
+    USE_CERTAINTY: True
+    USE_CONSISTENCY: False
+  MEMORY:
+    TYPE: "aamp"           # Chọn: "aamp" (PCubeMemory) hoặc "motta" (DropMemoryBank)

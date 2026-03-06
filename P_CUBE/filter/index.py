@@ -1,6 +1,7 @@
 import torch
 
 from P_CUBE.config import ModuleConfig
+from .ODPOriginalFilter import ODPOriginalFilter
 from .ODPBlockwiseFilter import ODPBlockwiseFilter
 from .ConsistencyFilter import ConsistencyFilter
 from .CertaintyFilter import CertaintyFilter
@@ -10,11 +11,21 @@ class P_Cube_Filter:
         print("Initializing P-CUBE Filters...")
         self.source_model = source_model
         
+        # # Cổng 1: Lọc Ổn định
+        # self.odp_filter = ODPBlockwiseFilter(
+        #     model_architecture=model_architecture,
+        #     pruning_ratio=cfg.odp_ratio,
+        # )
+
         # Cổng 1: Lọc Ổn định
-        self.odp_filter = ODPBlockwiseFilter(
-            model_architecture=model_architecture,
-            pruning_ratio=cfg.odp_ratio,
-        )
+        # 1. Khởi tạo ODP Filter dựa trên Config (ABLATION STUDY)
+        if cfg.FILTER.ODP_TYPE == "blockwise":
+            self.odp_filter = ODPBlockwiseFilter(model_architecture=model_architecture, pruning_ratio=cfg.odp_ratio)
+        elif cfg.FILTER.ODP_TYPE == "original":
+            # Tạo một class wrapper cho eval_pruning của MoTTA gốc để nó có cùng interface (.check_batch)
+            self.odp_filter = ODPOriginalFilter(model_architecture, prune_ratio=cfg.odp_ratio)
+        else:
+            self.odp_filter = None # Không dùng ODP
 
         # Cổng 2: Lọc Nhất quán
         self.consistency_filter = ConsistencyFilter(source_model, cfg.consistent_lambda_std, cfg.consistent_hard_floor)
