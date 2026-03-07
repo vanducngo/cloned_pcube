@@ -187,8 +187,8 @@ def main():
         # row.append(f"{err_src:.2f}" if isinstance(err_src, float) else err_src)
         
         # 2. Chạy MoTTA Gốc
-        err_orig = run_experiment("MoTTA_Original", corruption, device)
-        row.append(f"{err_orig:.2f}" if isinstance(err_orig, float) else err_orig)
+        # err_orig = run_experiment("MoTTA_Original", corruption, device)
+        # row.append(f"{err_orig:.2f}" if isinstance(err_orig, float) else err_orig)
         
         # 3. Chạy MoTTA AAMP
         err_aamp = run_experiment("MoTTA_AAMP", corruption, device)

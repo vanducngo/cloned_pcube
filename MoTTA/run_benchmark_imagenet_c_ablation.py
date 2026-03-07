@@ -99,15 +99,12 @@ def run_experiment(mode, corruption_type, device):
     # Load config chuẩn
     cfg = cdict(new_allowed=True)
     cfg.merge_from_file('config.yml')
-    
-    # Đảm bảo có nhánh P_CUBE trong config để ghi đè
-    if not hasattr(cfg, 'P_CUBE'):
-        cfg.P_CUBE = cdict(new_allowed=True)
-        cfg.P_CUBE.FILTER = cdict(new_allowed=True)
-        cfg.P_CUBE.MEMORY = cdict(new_allowed=True)
+
+    print(f"Check init config: {cfg}")
 
     if mode == "Source_Only":
         model = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
+        model.to(device)
         model.eval() 
         
     elif mode == "MoTTA_Original":
@@ -121,18 +118,18 @@ def run_experiment(mode, corruption_type, device):
         # --- CÁC KỊCH BẢN ABLATION DÙNG CLASS MoTTA_AAMP ---
         # Ghi đè cấu hình dựa trên Mode
         if mode == "MoTTA_AAMP":
-            cfg.P_CUBE.FILTER.ODP_TYPE = "blockwise"
-            cfg.P_CUBE.MEMORY.TYPE = "aamp"
+            cfg.paras_adapt_model.ablation_odp_type = "blockwise"
+            cfg.paras_adapt_model.ablation_memory_type = "aamp"
         elif mode == "Ablation_ODP_Block_Mem_MoTTA":
-            cfg.P_CUBE.FILTER.ODP_TYPE = "blockwise"
-            cfg.P_CUBE.MEMORY.TYPE = "motta"
+            cfg.paras_adapt_model.ablation_odp_type = "blockwise"
+            cfg.paras_adapt_model.ablation_memory_type = "motta"
         elif mode == "Ablation_ODP_Orig_Mem_AAMP":
-            cfg.P_CUBE.FILTER.ODP_TYPE = "original"
-            cfg.P_CUBE.MEMORY.TYPE = "aamp"
+            cfg.paras_adapt_model.ablation_odp_type = "original"
+            cfg.paras_adapt_model.ablation_memory_type = "aamp"
         elif mode == "Ablation_ODP_Orig_Mem_MoTTA":
             # [NEW] Sanity Check: Sử dụng wrapper kiến trúc mới, nhưng ruột là hàng cũ
-            cfg.P_CUBE.FILTER.ODP_TYPE = "original"
-            cfg.P_CUBE.MEMORY.TYPE = "motta"
+            cfg.paras_adapt_model.ablation_odp_type = "original"
+            cfg.paras_adapt_model.ablation_memory_type = "motta"
 
         backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
         backbone.to(device)
@@ -140,7 +137,7 @@ def run_experiment(mode, corruption_type, device):
         # LƯU Ý: Phải truyền cái cfg đã được ghi đè vào MoTTA_AAMP
         # Nếu __init__ của bạn không nhận cfg trực tiếp, hãy thêm nó vào:
         # model = MoTTA_AAMP(model=backbone, p_cube_cfg=cfg.P_CUBE, **cfg.paras_adapt_model)
-        model = MoTTA_AAMP(model=backbone, cfg=cfg, **cfg.paras_adapt_model) 
+        model = MoTTA_AAMP(model=backbone, **cfg.paras_adapt_model) 
         
         model.to(device)
         model.eval()
@@ -177,11 +174,12 @@ def run_experiment(mode, corruption_type, device):
                 }, commit=True)
                 
             if i % 5 == 0: print(f"  Batch {i} | Cum. Acc: {(correct/total)*100:.2f}%")
-            
-    except Exception as e:
-        print(f"Error at {corruption_type}: {e}")
+    finally:
         wandb.finish()
-        return "Error"
+    # except Exception as e:
+    #     print(f"Error at {corruption_type}: {e}")
+    #     wandb.finish()
+    #     return "Error"
     
     error_rate = 100 - (correct / total) * 100
     print(f"  -> Result: {error_rate:.2f}%")

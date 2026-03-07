@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Tuple
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class ModuleConfig:
     classifier_name: str = ''
     odp_ratio: float = 0.5
@@ -21,3 +21,11 @@ class ModuleConfig:
 
     max_age: int = 1024
     input_size: Tuple[int, int] = (32, 32)
+
+    # MOTTA ABLATION STUDY
+    ablation_odp_type: str = 'blockwise'
+    ablation_memory_type: str = 'aamp'
+
+    # Original MoTTA config
+    confidence_threshold: float = 0.33
+    uncertainty_threshold: float = 17.

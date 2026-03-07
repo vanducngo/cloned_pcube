@@ -1,0 +1,1 @@
+{"acc/batch_accuracy":29.629629850387573,"acc/cumulative_accuracy":28.858,"efficiency/vram_mb":1498.1591796875,"_wandb":{"runtime":1470},"_runtime":1470,"_step":976,"efficiency/latency_ms":18.062353134155273,"odp_stats/batch_mean":13.280946731567383,"step":976,"_timestamp":1.7728626511683424e+09,"odp_stats/batch_std":3.2525367736816406}

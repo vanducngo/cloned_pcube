@@ -35,7 +35,7 @@ class MoTTA(nn.Module):
                  enable_robustBN, loss_name, paras_loss, steps=1,
                  episodic=False, memory_bank_type='uhus', freeze_top=True, use_buffer=True, fix_pruning_model=True,
                  pruning_strategy='l1_unstructured', pruning_module='conv', calculate_selection_mask=False,
-                 category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each'):
+                 category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each', ablation_odp_type=None, ablation_memory_type=None):
 
         super().__init__()
         self.model = model

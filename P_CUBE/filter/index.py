@@ -19,9 +19,9 @@ class P_Cube_Filter:
 
         # Cổng 1: Lọc Ổn định
         # 1. Khởi tạo ODP Filter dựa trên Config (ABLATION STUDY)
-        if cfg.FILTER.ODP_TYPE == "blockwise":
+        if cfg.ablation_odp_type == "blockwise":
             self.odp_filter = ODPBlockwiseFilter(model_architecture=model_architecture, pruning_ratio=cfg.odp_ratio)
-        elif cfg.FILTER.ODP_TYPE == "original":
+        elif cfg.ablation_odp_type == "original":
             # Tạo một class wrapper cho eval_pruning của MoTTA gốc để nó có cùng interface (.check_batch)
             self.odp_filter = ODPOriginalFilter(model_architecture, prune_ratio=cfg.odp_ratio)
         else:

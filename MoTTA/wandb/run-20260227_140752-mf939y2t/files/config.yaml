@@ -1,0 +1,60 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            hl1bch81q9hb8nyg2qbduwe30xcql3d9:
+                codePath: MoTTA/run_benchmark_imagenet_c.py
+                codePathLocal: run_benchmark_imagenet_c.py
+                cpu_count: 28
+                cpu_count_logical: 56
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "884918456320"
+                        used: "488503607296"
+                email: vanducngo190@gmail.com
+                executable: /home/ngoto/miniconda3/bin/python
+                git:
+                    commit: 38b112266223c77fc9f02ca22ed50f6d389f0bce
+                    remote: git@github.com:vanducngo/cloned_pcube.git
+                gpu: NVIDIA GeForce RTX 3060
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 3584
+                      memoryTotal: "12884901888"
+                      name: NVIDIA GeForce RTX 3060
+                      uuid: GPU-cec78d58-142c-eb42-f9a7-87a29ea1800b
+                host: ngoto-Z10PA-D8-Series
+                memory:
+                    total: "101221691392"
+                os: Linux-6.17.0-14-generic-x86_64-with-glibc2.39
+                program: /home/ngoto/Working/cloned_pcube/MoTTA/run_benchmark_imagenet_c.py
+                python: CPython 3.13.5
+                root: /home/ngoto/Working/cloned_pcube/MoTTA
+                startedAt: "2026-02-27T07:07:52.104513Z"
+                writerId: hl1bch81q9hb8nyg2qbduwe30xcql3d9
+        m: []
+        python_version: 3.13.5
+        t:
+            "1":
+                - 1
+                - 5
+                - 41
+                - 49
+                - 53
+                - 63
+            "2":
+                - 1
+                - 5
+                - 41
+                - 49
+                - 53
+                - 63
+            "3":
+                - 13
+                - 24
+            "4": 3.13.5
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": linux-x86_64

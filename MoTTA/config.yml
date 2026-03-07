@@ -19,7 +19,7 @@ paras_adapt_model:
   update_frequency: 64
   update_counter: each
   confidence_threshold: 0.33
-  uncertainty_threshold: 17.
+  uncertainty_threshold: 17.0
   prune_ratio: 0.5
   pruning_strategy: ln_structured
   pruning_module: conv
@@ -31,10 +31,6 @@ paras_adapt_model:
   paras_loss:
     lambda_info: 0.
 
-P_CUBE:
-  FILTER:
-    ODP_TYPE: "blockwise"  # Chọn: "blockwise" hoặc "original"
-    USE_CERTAINTY: True
-    USE_CONSISTENCY: False
-  MEMORY:
-    TYPE: "aamp"           # Chọn: "aamp" (PCubeMemory) hoặc "motta" (DropMemoryBank)
+  ablation_odp_type: "blockwise"  # Chọn: "blockwise" hoặc "original"
+  ablation_memory_type: "aamp"
+  
