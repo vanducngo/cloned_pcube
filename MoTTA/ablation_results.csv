@@ -1,5 +1,2 @@
-Corruption,Source_Only,MoTTA_Original,Ablation_ODP_Orig_Mem_MoTTA,Ablation_ODP_Block_Mem_MoTTA,Ablation_ODP_Orig_Mem_AAMP,MoTTA_AAMP
-gaussian_noise,94.32,71.14,94.32,70.14,94.32,69.23
-defocus_blur,84.97,72.37,84.97,69.45,84.97,68.29
-snow,84.41,53.30,84.41,52.65,84.41,52.20
-contrast,95.78,61.72,95.78,60.93,95.78,58.65
+Corruption,Ablation_ODP_Orig_Mem_MoTTA
+gaussian_noise,70.79

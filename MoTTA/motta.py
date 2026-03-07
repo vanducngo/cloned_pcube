@@ -38,6 +38,10 @@ class MoTTA(nn.Module):
                  category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each', ablation_odp_type=None, ablation_memory_type=None):
 
         super().__init__()
+
+
+        print(f"MoTTA-MoTTA-MoTTA - arch:{arch}, dataset:{dataset}, prune_ratio:{prune_ratio}, uncertainty_threshold:{uncertainty_threshold}, confidence_threshold: {confidence_threshold}")
+
         self.model = model
         self.paras_optim = paras_optim
 
