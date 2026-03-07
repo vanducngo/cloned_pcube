@@ -28,4 +28,4 @@ class ModuleConfig:
 
     # Original MoTTA config
     confidence_threshold: float = 0.33
-    uncertainty_threshold: float = 17.
+    uncertainty_threshold: float = 17.0

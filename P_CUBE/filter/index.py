@@ -23,7 +23,7 @@ class P_Cube_Filter:
             self.odp_filter = ODPBlockwiseFilter(model_architecture=model_architecture, pruning_ratio=cfg.odp_ratio)
         elif cfg.ablation_odp_type == "original":
             # Tạo một class wrapper cho eval_pruning của MoTTA gốc để nó có cùng interface (.check_batch)
-            self.odp_filter = ODPOriginalFilter(model_architecture, prune_ratio=cfg.odp_ratio)
+            self.odp_filter = ODPOriginalFilter(model_architecture, prune_ratio=cfg.odp_ratio, threshold=cfg.uncertainty_threshold)
         else:
             self.odp_filter = None # Không dùng ODP
 

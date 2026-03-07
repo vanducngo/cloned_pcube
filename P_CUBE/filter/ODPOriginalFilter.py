@@ -60,6 +60,8 @@ class ODPOriginalFilter:
     - Sử dụng ngưỡng tĩnh (Static Threshold).
     """
     def __init__(self, model_architecture, arch_name='Standard_R50', dataset_name='imagenet', prune_ratio=0.1, threshold=0.2):
+        
+        print(f"ODPOriginalFilter- arch_name:{arch_name}, dataset_name:{dataset_name}, prune_ratio:{prune_ratio}, threshold:{threshold}")
         self.prune_ratio = prune_ratio
         
         # Ngưỡng tĩnh theo độ (ví dụ 0.2 độ, tuỳ thuộc vào cách định nghĩa threshold trong MoTTA)
