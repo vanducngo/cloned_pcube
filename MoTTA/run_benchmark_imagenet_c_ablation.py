@@ -21,11 +21,11 @@ SEVERITY = 5
 
 # Danh sách 15 loại nhiễu của ImageNet-C
 CORRUPTIONS = [
-    "gaussian_noise", 
-    "shot_noise", 
-    "impulse_noise",
-    "defocus_blur", 
-    "glass_blur", 
+    # "gaussian_noise", 
+    # "shot_noise", 
+    # "impulse_noise",
+    # "defocus_blur", 
+    # "glass_blur", 
     "motion_blur", 
     "zoom_blur",
     "snow", 

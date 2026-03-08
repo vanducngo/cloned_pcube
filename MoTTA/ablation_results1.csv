@@ -2,3 +2,5 @@ Corruption,Source_Only,MoTTA_Original,Ablation_ODP_Orig_Mem_MoTTA,Ablation_ODP_B
 gaussian_noise,94.32,70.93,71.03,70.40,69.57,69.02
 shot_noise,93.51,68.30,68.53,67.28,67.31,66.55
 impulse_noise,93.56,68.25,68.53,67.92,67.41,67.04
+defocus_blur,84.97,72.40,69.43,69.95,67.80,68.32
+glass_blur,91.77,73.25,72.39,72.43,71.25,70.80
