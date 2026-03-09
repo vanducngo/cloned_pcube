@@ -1,0 +1,58 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            ke81g3r3td9ra3mk9y44sd2zxhilinu9:
+                codePath: MoTTA/run_benchmark_imagenet_c_ablation.py
+                codePathLocal: run_benchmark_imagenet_c_ablation.py
+                cpu_count: 28
+                cpu_count_logical: 56
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "884918456320"
+                        used: "642874339328"
+                email: vanducngo190@gmail.com
+                executable: /home/ngoto/miniconda3/bin/python
+                git:
+                    commit: cbc98aed8be41c5502ad9a0b2ec66bea020edaf8
+                    remote: git@github.com:vanducngo/cloned_pcube.git
+                gpu: NVIDIA GeForce RTX 3060
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 3584
+                      memoryTotal: "12884901888"
+                      name: NVIDIA GeForce RTX 3060
+                      uuid: GPU-cec78d58-142c-eb42-f9a7-87a29ea1800b
+                host: ngoto-Z10PA-D8-Series
+                memory:
+                    total: "101221703680"
+                os: Linux-6.17.0-14-generic-x86_64-with-glibc2.39
+                program: /home/ngoto/Working/cloned_pcube/MoTTA/run_benchmark_imagenet_c_ablation.py
+                python: CPython 3.13.5
+                root: /home/ngoto/Working/cloned_pcube/MoTTA
+                startedAt: "2026-03-09T03:35:57.181612Z"
+                writerId: ke81g3r3td9ra3mk9y44sd2zxhilinu9
+        m: []
+        python_version: 3.13.5
+        t:
+            "1":
+                - 1
+                - 41
+                - 49
+                - 63
+            "2":
+                - 1
+                - 41
+                - 49
+                - 63
+            "3":
+                - 2
+                - 13
+            "4": 3.13.5
+            "5": 0.25.0
+            "10":
+                - 20
+            "12": 0.25.0
+            "13": linux-x86_64

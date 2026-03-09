@@ -1,0 +1,40 @@
+{
+  "os":  "Linux-6.17.0-14-generic-x86_64-with-glibc2.39",
+  "python":  "CPython 3.13.5",
+  "startedAt":  "2026-03-08T15:17:52.370006Z",
+  "program":  "/home/ngoto/Working/cloned_pcube/MoTTA/run_benchmark_imagenet_c_ablation.py",
+  "codePath":  "MoTTA/run_benchmark_imagenet_c_ablation.py",
+  "codePathLocal":  "run_benchmark_imagenet_c_ablation.py",
+  "git":  {
+    "remote":  "git@github.com:vanducngo/cloned_pcube.git",
+    "commit":  "cbc98aed8be41c5502ad9a0b2ec66bea020edaf8"
+  },
+  "email":  "vanducngo190@gmail.com",
+  "root":  "/home/ngoto/Working/cloned_pcube/MoTTA",
+  "host":  "ngoto-Z10PA-D8-Series",
+  "executable":  "/home/ngoto/miniconda3/bin/python",
+  "cpu_count":  28,
+  "cpu_count_logical":  56,
+  "gpu":  "NVIDIA GeForce RTX 3060",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "884918456320",
+      "used":  "642731675648"
+    }
+  },
+  "memory":  {
+    "total":  "101221703680"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 3060",
+      "memoryTotal":  "12884901888",
+      "cudaCores":  3584,
+      "architecture":  "Ampere",
+      "uuid":  "GPU-cec78d58-142c-eb42-f9a7-87a29ea1800b"
+    }
+  ],
+  "cudaVersion":  "12.8",
+  "writerId":  "t5mvl7b1qxe4ijvob5bbldk4npo9cjh6"
+}
