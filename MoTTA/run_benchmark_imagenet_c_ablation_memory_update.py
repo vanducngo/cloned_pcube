@@ -78,18 +78,20 @@ def get_dataloader(corruption_type):
 
 def run_experiment(mode, corruption_type, device):
     print(f"\n[{mode}] Running on {corruption_type}...")
-
+    isUseWanDb = False
     # Đặt tên Wandb Run rõ ràng để phân biệt các Ablation
-    wandb.init(
-        project="MoTTA_Aging_Ablation", 
-        name=f"{mode}_{corruption_type}",
-        reinit=True # Cho phép chạy nhiều run trong cùng 1 script
-    )
+    if isUseWanDb == True:
+        wandb.init(
+            project="MoTTA_Aging_Ablation", 
+            name=f"{mode}_{corruption_type}",
+            reinit=True # Cho phép chạy nhiều run trong cùng 1 script
+        )
     
     # 1. Prepare Data
     loader = get_dataloader(corruption_type)
     if loader is None: 
-        wandb.finish()
+        if isUseWanDb == True:
+            wandb.finish()
         return None
 
     # 2. Init Model
@@ -148,8 +150,8 @@ def run_experiment(mode, corruption_type, device):
                 preds = logits[clean_idx].argmax(dim=1)
                 correct += (preds == labels[clean_idx]).sum().item()
                 total += clean_idx.sum().item()
-                
-            if wandb.run is not None and total > 0:
+            
+            if isUseWanDb == True and wandb.run is not None and total > 0:
                 batch_acc = (preds == labels[clean_idx]).float().mean().item() * 100 if clean_idx.any() else 0
                 cum_acc = (correct / total) * 100
                 wandb.log({
@@ -160,7 +162,8 @@ def run_experiment(mode, corruption_type, device):
                 
             if i % 5 == 0: print(f"  Batch {i} | Cum. Acc: {(correct/total)*100:.2f}%")
     finally:
-        wandb.finish()
+        if isUseWanDb == True:
+            wandb.finish()
     # except Exception as e:
     #     print(f"Error at {corruption_type}: {e}")
     #     wandb.finish()
@@ -170,7 +173,8 @@ def run_experiment(mode, corruption_type, device):
     print(f"  -> Result: {error_rate:.2f}%")
     
     # Kết thúc WandB run hiện tại
-    wandb.finish()
+    if isUseWanDb == True:
+        wandb.finish()
     
     del model, loader
     torch.cuda.empty_cache()
