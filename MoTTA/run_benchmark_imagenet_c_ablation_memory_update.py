@@ -21,21 +21,21 @@ SEVERITY = 5
 
 # Danh sách 15 loại nhiễu của ImageNet-C
 CORRUPTIONS = [
-    # "gaussian_noise", 
+    "gaussian_noise", 
     # "shot_noise", 
     # "impulse_noise",
     # "defocus_blur", 
     # "glass_blur", 
-    "motion_blur", 
-    "zoom_blur",
-    "snow", 
-    "frost", 
-    "fog",
-    "brightness",
-    "contrast",
-    "elastic_transform", 
-    "pixelate", 
-    "jpeg_compression"
+    # "motion_blur", 
+    # "zoom_blur",
+    # "snow", 
+    # "frost", 
+    # "fog",
+    # "brightness",
+    # "contrast",
+    # "elastic_transform", 
+    # "pixelate", 
+    # "jpeg_compression"
 ]
 
 # CORRUPTIONS = ["zoom_blur"]
@@ -81,7 +81,7 @@ def run_experiment(mode, corruption_type, device):
 
     # Đặt tên Wandb Run rõ ràng để phân biệt các Ablation
     wandb.init(
-        project="MoTTA_Ablation_Study", 
+        project="MoTTA_Aging_Ablation", 
         name=f"{mode}_{corruption_type}",
         reinit=True # Cho phép chạy nhiều run trong cùng 1 script
     )
@@ -106,30 +106,15 @@ def run_experiment(mode, corruption_type, device):
         model = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
         model.to(device)
         model.eval() 
-        
-    elif mode == "MoTTA_Original":
-        backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
-        backbone.to(device)
-        model = MoTTA(model=backbone, **cfg.paras_adapt_model)
-        model.to(device)
-        model.eval()
-
     else:
-        # --- CÁC KỊCH BẢN ABLATION DÙNG CLASS MoTTA_AAMP ---
+        cfg.paras_adapt_model.ablation_odp_type = "blockwise"
+        cfg.paras_adapt_model.ablation_memory_type = "aamp"
+        
         # Ghi đè cấu hình dựa trên Mode
-        if mode == "MoTTA_AAMP":
-            cfg.paras_adapt_model.ablation_odp_type = "blockwise"
-            cfg.paras_adapt_model.ablation_memory_type = "aamp"
-        elif mode == "Ablation_ODP_Block_Mem_MoTTA":
-            cfg.paras_adapt_model.ablation_odp_type = "blockwise"
-            cfg.paras_adapt_model.ablation_memory_type = "motta"
-        elif mode == "Ablation_ODP_Orig_Mem_AAMP":
-            cfg.paras_adapt_model.ablation_odp_type = "original"
-            cfg.paras_adapt_model.ablation_memory_type = "aamp"
-        elif mode == "Ablation_ODP_Orig_Mem_MoTTA":
-            # [NEW] Sanity Check: Sử dụng wrapper kiến trúc mới, nhưng ruột là hàng cũ
-            cfg.paras_adapt_model.ablation_odp_type = "original"
-            cfg.paras_adapt_model.ablation_memory_type = "motta"
+        if mode == "MoTTA_AAMP_NoAging":
+            cfg.paras_adapt_model.ablation_use_adaptive_aging = False
+        elif mode == "MoTTA_AAMP_Adaptive":
+            cfg.paras_adapt_model.ablation_use_adaptive_aging = True
 
         backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
         backbone.to(device)
@@ -199,16 +184,13 @@ def main():
     # Danh sách các kịch bản cần test
     MODES_TO_RUN = [
         "Source_Only",
-        "MoTTA_Original",                # Lấy từ file motta.py gốc
-        "Ablation_ODP_Orig_Mem_MoTTA",   # Sanity Check (P_CUBE Factory)
-        "Ablation_ODP_Block_Mem_MoTTA",  # Test ODP
-        "Ablation_ODP_Orig_Mem_AAMP",    # Test Memory
-        "MoTTA_AAMP"                     # Phiên bản Full cải tiến
+        "MoTTA_AAMP_NoAging",
+        "MoTTA_AAMP_Adaptive",
     ]
     
     headers = ["Corruption"] + MODES_TO_RUN
     
-    with open("ablation_results.csv", "w", newline="") as f:
+    with open("ablation_aging_results.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(headers)
 
@@ -219,13 +201,13 @@ def main():
             err = run_experiment(mode, corruption, device)
             row.append(f"{err:.2f}" if isinstance(err, float) else err)
         
-        with open("ablation_results.csv", "a", newline="") as f:
+        with open("ablation_aging_results.csv", "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
             
         print("-" * 50)
 
-    print("Ablation Study Completed! Results saved to ablation_results.csv")
+    print("Aging Ablation Study Completed! Results saved to ablation_aging_results.csv")
 
 if __name__ == "__main__":
     main()

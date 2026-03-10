@@ -12,7 +12,7 @@ class PCubeMemoryBank:
         self.lambda_t = cfg.lambda_t
         self.lambda_u = cfg.lambda_u
         
-        self.use_adaptive_aging = False
+        self.use_adaptive_aging = cfg.ablation_use_adaptive_aging
         self.age_factor_bonus = 10
         self.base_aging_speed = 1
 

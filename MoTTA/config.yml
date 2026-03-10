@@ -33,4 +33,5 @@ paras_adapt_model:
 
   ablation_odp_type: "blockwise"  # Chọn: "blockwise" hoặc "original"
   ablation_memory_type: "aamp"
+  ablation_use_adaptive_aging: false
   
