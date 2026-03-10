@@ -1,0 +1,21 @@
+=== KIỂM TRA DATASET: ./Data/imagenet-c (Severity: 5) ===
+
+CORRUPTION TYPE           | SỐ LƯỢNG ẢNH    | TRẠNG THÁI
+-----------------------------------------------------------------
+gaussian_noise            | 50,000          | OK
+shot_noise                | 50,000          | OK
+impulse_noise             | 50,000          | OK
+defocus_blur              | 50,000          | OK
+glass_blur                | 50,000          | OK
+motion_blur               | 50,000          | OK
+zoom_blur                 | 50,000          | OK
+snow                      | 50,000          | OK
+frost                     | 50,000          | OK
+fog                       | 50,000          | OK
+brightness                | 50,000          | OK
+contrast                  | 50,000          | OK
+elastic_transform         | 50,000          | OK
+pixelate                  | 50,000          | OK
+jpeg_compression          | 50,000          | OK
+-----------------------------------------------------------------
+TỔNG CỘNG TẤT CẢ:         750,000 ảnh
