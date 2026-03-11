@@ -205,7 +205,7 @@ def main():
     
     headers = ["Corruption"] + MODES_TO_RUN
     
-    with open("ablation_aging_results.csv", "w", newline="") as f:
+    with open("ablation_heuristic_results.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(headers)
 
@@ -216,13 +216,13 @@ def main():
             err = run_experiment(mode, corruption, device)
             row.append(f"{err:.2f}" if isinstance(err, float) else err)
         
-        with open("ablation_aging_results.csv", "a", newline="") as f:
+        with open("ablation_heuristic_results.csv", "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(row)
             
         print("-" * 50)
 
-    print("Aging Ablation Study Completed! Results saved to ablation_aging_results.csv")
+    print("Aging Ablation Study Completed! Results saved to ablation_heuristic_results.csv")
 
 if __name__ == "__main__":
     main()
