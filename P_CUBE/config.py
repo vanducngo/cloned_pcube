@@ -18,6 +18,7 @@ class ModuleConfig:
     memory_capacity: int = 64
     lambda_t: float = 1.0
     lambda_u: float = 1.0
+    lambda_odp: float = 1.0 # New for Heuristic Score
 
     max_age: int = 1024
     input_size: Tuple[int, int] = (32, 32)
@@ -32,3 +33,5 @@ class ModuleConfig:
 
     # Memory Update
     ablation_use_adaptive_aging: bool = False
+
+    

@@ -38,7 +38,10 @@ class MoTTA_AAMP(nn.Module):
                  pruning_strategy='l1_unstructured', pruning_module='conv', calculate_selection_mask=False,
                  category_uniform=True, record=False, metric_name='pruning_logit_norm_change', update_counter='each', 
                  ablation_odp_type = "blockwise", ablation_memory_type = "aamp",
-                 ablation_use_adaptive_aging = False
+                 ablation_use_adaptive_aging = False,
+                 ablation_lambda_t = 1.0,
+                 ablation_lambda_u = 1.0,
+                 ablation_lambda_odp = 1.0
                  ):
 
         super().__init__()
@@ -69,7 +72,10 @@ class MoTTA_AAMP(nn.Module):
             confidence_factor=confidence_threshold,
             ablation_odp_type=ablation_odp_type,
             ablation_memory_type=ablation_memory_type,
-            ablation_use_adaptive_aging=ablation_use_adaptive_aging
+            ablation_use_adaptive_aging=ablation_use_adaptive_aging,
+            lambda_t=ablation_lambda_t,
+            lambda_u=ablation_lambda_u,
+            lambda_odp=ablation_lambda_odp
         )
 
         print(f"Check ModuleConfig: {p_cube_cfg}")

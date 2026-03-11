@@ -11,8 +11,9 @@ class PCubeMemoryBank:
         self.per_class_capacity = self.capacity / self.num_classes
         self.lambda_t = cfg.lambda_t
         self.lambda_u = cfg.lambda_u
+        self.lambda_odp = cfg.lambda_odp
         
-        self.use_adaptive_aging = cfg.ablation_use_adaptive_aging
+        self.use_adaptive_aging = False 
         self.age_factor_bonus = 10
         self.base_aging_speed = 1
 
@@ -40,7 +41,7 @@ class PCubeMemoryBank:
         
         print("PCubeMemoryBank has been reset.")
 
-    def add_clean_samples_batch(self, clean_samples, clean_pseudo_labels, clean_entropies):
+    def add_clean_samples_batch(self, clean_samples, clean_pseudo_labels, clean_entropies, clean_odp_scores=None):
         # --- Bước 1: Dọn dẹp các mẫu hết hạn (Cleanup by Expiration Age) ---
         # self._cleanup_expired_items()
 
@@ -70,10 +71,12 @@ class PCubeMemoryBank:
             self.ema_entropy = self.alpha_entropy * self.ema_entropy + (1 - self.alpha_entropy) * current_batch_entropy
 
         for i in range(len(clean_samples)):
+            odp_val = clean_odp_scores[i].item() if clean_odp_scores is not None else 0.0
             new_item = MemoryItem(
                 sample=clean_samples[i].cpu(), 
                 pseudo_label=clean_pseudo_labels[i].item(), 
-                uncertainty=clean_entropies[i].item()
+                uncertainty=clean_entropies[i].item(),
+                odp_score=odp_val
             )
 
             self._manage_and_add_single_item(new_item)
@@ -87,7 +90,7 @@ class PCubeMemoryBank:
 
     def _manage_and_add_single_item(self, new_item: MemoryItem):
         target_class = new_item.pseudo_label
-        new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty)
+        new_score = self.heuristic_score(age=0, uncertainty=new_item.uncertainty, odp_score=new_item.odp_score)
         if self.remove_instance(target_class, new_score):
             self.data[target_class].append(new_item)
 
@@ -125,7 +128,8 @@ class PCubeMemoryBank:
             for idx, item in enumerate(self.data[cls]):
                 uncertainty = item.uncertainty
                 age = item.age
-                score = self.heuristic_score(age=age, uncertainty=uncertainty)
+                odp = item.odp_score
+                score = self.heuristic_score(age=age, uncertainty=uncertainty, odp_score=odp)
                 if max_score is None or score >= max_score:
                     max_score = score
                     max_index = idx
@@ -157,8 +161,24 @@ class PCubeMemoryBank:
 
         return classes
 
-    def heuristic_score(self, age, uncertainty):
-        return self.lambda_t * 1 / (1 + math.exp(-age / self.capacity)) + self.lambda_u * uncertainty / math.log(self.num_classes)
+    def heuristic_score(self, age, uncertainty, odp_score):
+        """
+        Công thức Heuristic mới = Tuổi + Entropy + ODP
+        """
+        score = 0.0
+
+        if self.lambda_t > 0:
+            score += self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
+
+        if self.lambda_u > 0:
+            score += self.lambda_u * uncertainty / math.log(self.num_classes)
+        
+        if self.lambda_odp > 0:
+            # ODP Score mặc định đã nằm trong khoảng [0, ~2] (do là 1 - CosineSimilarity)
+            # Không cần chia log, chỉ nhân thẳng với hệ số lambda_odp
+            score += self.lambda_odp * odp_score
+
+        return score
 
     def add_age(self, aging_speed):
         for class_list in self.data:

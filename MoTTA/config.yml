@@ -35,3 +35,7 @@ paras_adapt_model:
   ablation_memory_type: "aamp"
   ablation_use_adaptive_aging: false
   
+  # Ablation for heuristic score
+  ablation_lambda_t: 1.0
+  ablation_lambda_u: 1.0
+  ablation_lambda_odp: 1.0

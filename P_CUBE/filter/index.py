@@ -41,10 +41,14 @@ class P_Cube_Filter:
     def filter_batch(self, batch_samples, current_model):
         num_initial_samples = len(batch_samples)
         if num_initial_samples == 0:
-            return torch.tensor([], dtype=torch.bool, device=batch_samples.device)
+            return torch.tensor([], dtype=torch.bool, device=batch_samples.device), None
         
         # Tạo mask ban đầu, tất cả đều là True - chấp nhận toàn bộ batch
         final_mask = torch.ones(num_initial_samples, dtype=torch.bool, device=batch_samples.device)
+
+        # Khởi tạo mảng ODP scores cho toàn bộ batch (mặc định là 0.0)
+        # Sẽ được cập nhật ở vòng lặp khi chạy qua ODP Filter
+        final_odp_scores = torch.zeros(num_initial_samples, dtype=torch.float, device=batch_samples.device)
 
         filter_pipeline = [
             ("Gate 1 (Certainty)", self.certainty_filter, True),   # Nhẹ (Chỉ tính Softmax & Entropy)
@@ -69,7 +73,13 @@ class P_Cube_Filter:
             # 2. Chạy bộ lọc hiện tại
             if returns_tuple:
                 # ODP và Certainty filter trả về (mask, scores)
-                current_mask, _ = filter_obj.check_batch(samples_to_check, current_model)
+                current_mask, current_scores = filter_obj.check_batch(samples_to_check, current_model)
+
+                # Nếu là cổng ODP, lưu lại điểm số vào final_odp_scores
+                if gate_name == "Gate 3 (ODP)":
+                    # final_mask đang giữ index của những mẫu sống sót đến trước cổng này
+                    # Chỉ gán điểm cho những vị trí đó
+                    final_odp_scores[final_mask.clone()] = current_scores
             else:
                 # Consistency filter chỉ trả về mask
                 current_mask = filter_obj.check_batch(samples_to_check, current_model)
@@ -85,7 +95,7 @@ class P_Cube_Filter:
             # Cập nhật số lượng cho vòng lặp tiếp theo
             num_after_prev_gate = num_survivors
 
-        return final_mask
+        return final_mask, final_odp_scores
 
         # num_after_prev_gate = num_initial_samples
 

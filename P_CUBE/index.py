@@ -53,7 +53,7 @@ class P_CUBE(nn.Module):
         teacher_model.eval()
         
         # --- GIAI ĐOẠN 1: LỌC ---
-        clean_mask = self.filter.filter_batch(batch_data, teacher_model)
+        clean_mask, batch_odp_scores = self.filter.filter_batch(batch_data, teacher_model)
         
         # --- GIAI ĐOẠN 2: QUẢN LÝ BỘ NHỚ ---
         if clean_mask.sum() == 0:
@@ -66,6 +66,7 @@ class P_CUBE(nn.Module):
         clean_probs = F.softmax(clean_outputs, dim=1)
         clean_entropies = -torch.sum(clean_probs * torch.log(clean_probs + 1e-8), dim=1)
         clean_pseudo_labels = clean_probs.argmax(dim=1)
+        clean_odp_scores = batch_odp_scores[clean_mask] if batch_odp_scores is not None else None
         
         # Thêm batch mẫu sạch vào bộ nhớ.
         # Logic quản lý vĩ mô (check domain shift) đã được đóng gói bên trong hàm này.
@@ -73,7 +74,7 @@ class P_CUBE(nn.Module):
 
         # 2. Rẽ nhánh theo loại Memory Bank
         if isinstance(self.memory, PCubeMemoryBank): # Nếu là AAMP Memory
-            self.memory.add_clean_samples_batch(clean_samples,clean_pseudo_labels, clean_entropies)
+            self.memory.add_clean_samples_batch(clean_samples,clean_pseudo_labels, clean_entropies, clean_odp_scores)
         elif isinstance(self.memory, DropMemoryBank): # Nếu là MoTTA Memory (Ablation)
             # MoTTA DropMemoryBank yêu cầu thêm từng instance dưới dạng dict
             # Lưu ý: MoTTA gốc định nghĩa `confidence` là giá trị max probability
