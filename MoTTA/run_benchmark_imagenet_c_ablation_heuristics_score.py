@@ -24,18 +24,18 @@ CORRUPTIONS = [
     "gaussian_noise", 
     # "shot_noise", 
     # "impulse_noise",
-    "defocus_blur", 
+    # "defocus_blur", 
     # "glass_blur", 
     # "motion_blur", 
-    "zoom_blur",
+    # "zoom_blur",
     # "snow", 
     # "frost", 
     # "fog",
     # "brightness",
-    "contrast",
+    # "contrast",
     # "elastic_transform", 
     # "pixelate", 
-    "jpeg_compression"
+    # "jpeg_compression"
 ]
 
 # CORRUPTIONS = ["zoom_blur"]
@@ -78,7 +78,7 @@ def get_dataloader(corruption_type):
 
 def run_experiment(mode, corruption_type, device):
     print(f"\n[{mode}] Running on {corruption_type}...")
-    isUseWanDb = False
+    isUseWanDb = True
     # Đặt tên Wandb Run rõ ràng để phân biệt các Ablation
     if isUseWanDb == True:
         wandb.init(
@@ -198,9 +198,9 @@ def main():
     
     # Danh sách các kịch bản cần test
     MODES_TO_RUN = [
-        "MoTTA_AAMP",
+        # "MoTTA_AAMP",
         "MoTTA_AAMP_3_SCORE",
-        "MoTTA_AAMP_2_New_Score",
+        # "MoTTA_AAMP_2_New_Score",
     ]
     
     headers = ["Corruption"] + MODES_TO_RUN

@@ -18,9 +18,11 @@ from robustbench.model_zoo.architectures.utils_architectures import normalize_mo
 from loss import NegWeightedMutualInformation_on_marginal
 from optimizer import build_optimizer
 
-# [CHANGE 1] 
+
 from P_CUBE.index import P_CUBE 
 from P_CUBE.config import ModuleConfig
+
+import wandb
 
 pruning_methods = {
     "l1_unstructured": prune.l1_unstructured,
@@ -223,6 +225,17 @@ class MoTTA_AAMP(nn.Module):
 
         # [CHANGE]
         self.p_cube.process_and_fill_memory(x, self.model)
+
+        if wandb.run is not None:
+            # Lấy thống kê từ AAMP Memory Bank (qua P_CUBE)
+            # Cần kiểm tra xem bộ nhớ đang dùng có hàm này không
+            if hasattr(self.p_cube.memory, 'get_memory_stats'):
+                mem_stats = self.p_cube.memory.get_memory_stats()
+                
+                # Log lên WandB (Dùng commit=False để gộp với các log khác ở vòng lặp chính nếu cần, 
+                # hoặc commit=True nếu đây là điểm cuối cùng của 1 step)
+                wandb.log(mem_stats, commit=False) 
+
         update_model_flag = False
         
         # Cập nhật bộ đếm để trigger update model

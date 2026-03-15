@@ -204,3 +204,44 @@ class PCubeMemoryBank:
         tmp_age = [x / self.capacity for x in tmp_age]
 
         return tmp_data, tmp_age
+    
+    def get_memory_stats(self):
+        """
+        Tính toán các chỉ số thống kê trung bình của toàn bộ các mẫu đang có trong Memory Bank.
+        Trả về một dictionary để log lên WandB.
+        """
+        all_ages = []
+        all_entropies = []
+        all_odp_scores = []
+        all_heuristic_scores = []
+
+        for class_list in self.data:
+            for item in class_list:
+                all_ages.append(item.age)
+                all_entropies.append(item.uncertainty)
+                
+                # An toàn: Kiểm tra xem item có odp_score không (nếu đang chạy chế độ không ODP)
+                odp_val = getattr(item, 'odp_score', 0.0) 
+                all_odp_scores.append(odp_val)
+                
+                # Tính điểm Heuristic của mẫu này ngay tại thời điểm hiện tại
+                h_score = self.heuristic_score(age=item.age, uncertainty=item.uncertainty, odp_score=odp_val)
+                all_heuristic_scores.append(h_score)
+
+        # Tính trung bình (tránh chia cho 0 nếu memory rỗng)
+        if len(all_ages) == 0:
+            return {
+                "mem_stats/avg_age": 0.0,
+                "mem_stats/avg_entropy": 0.0,
+                "mem_stats/avg_odp": 0.0,
+                "mem_stats/avg_heuristic": 0.0,
+                "mem_stats/occupancy": 0
+            }
+
+        return {
+            "mem_stats/avg_age": sum(all_ages) / len(all_ages),
+            "mem_stats/avg_entropy": sum(all_entropies) / len(all_entropies),
+            "mem_stats/avg_odp": sum(all_odp_scores) / len(all_odp_scores),
+            "mem_stats/avg_heuristic": sum(all_heuristic_scores) / len(all_heuristic_scores),
+            "mem_stats/occupancy": len(all_ages)
+        }
