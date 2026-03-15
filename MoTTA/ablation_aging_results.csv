@@ -1,2 +1,16 @@
 Corruption,Source_Only,MoTTA_AAMP_NoAging,MoTTA_AAMP_Adaptive
-gaussian_noise,94.32,69.12,68.88
+gaussian_noise,94.32,69.34,68.90
+shot_noise,93.51,66.16,66.47
+impulse_noise,93.56,67.14,66.79
+defocus_blur,84.97,68.08,68.10
+glass_blur,91.77,71.19,71.19
+motion_blur,86.70,58.41,58.70
+zoom_blur,84.97,67.96,68.15
+snow,84.41,51.85,52.32
+frost,79.56,57.49,57.54
+fog,77.79,43.02,42.90
+brightness,44.36,33.16,33.10
+contrast,95.78,58.75,59.08
+elastic_transform,85.68,46.34,46.21
+pixelate,77.01,42.51,42.67
+jpeg_compression,65.46,48.27,48.25
