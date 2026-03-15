@@ -122,12 +122,12 @@ def run_experiment(mode, corruption_type, device):
         # Đề xuất: Score = Age + Entropy + ODP
         cfg.paras_adapt_model.ablation_lambda_t = 1.0
         cfg.paras_adapt_model.ablation_lambda_u = 1.0
-        cfg.paras_adapt_model.ablation_lambda_odp = 1.0 # Bật ODP
+        cfg.paras_adapt_model.ablation_lambda_odp = 20.0 # Bật ODP
     elif mode == "MoTTA_AAMP_2_New_Score":
         # Thay thế: Score = Age + ODP (Bỏ Entropy)
         cfg.paras_adapt_model.ablation_lambda_t = 1.0
         cfg.paras_adapt_model.ablation_lambda_u = 0.0 # Tắt Entropy
-        cfg.paras_adapt_model.ablation_lambda_odp = 1.0 # Bật ODP
+        cfg.paras_adapt_model.ablation_lambda_odp = 20.0 # Bật ODP
 
     backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
     backbone.to(device)
