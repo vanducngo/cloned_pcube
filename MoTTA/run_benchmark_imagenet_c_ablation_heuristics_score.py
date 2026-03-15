@@ -115,19 +115,19 @@ def run_experiment(mode, corruption_type, device):
         
     if mode == "MoTTA_AAMP":
         # Baseline: Score = Age + Entropy (RoTTA gốc)
-        cfg.paras_adapt_model.ablation_lambda_t = 2.0
+        cfg.paras_adapt_model.ablation_lambda_t = 1.0
         cfg.paras_adapt_model.ablation_lambda_u = 1.0
         cfg.paras_adapt_model.ablation_lambda_odp = 0.0 # Tắt ODP
     elif mode == "MoTTA_AAMP_3_SCORE":
         # Đề xuất: Score = Age + Entropy + ODP
-        cfg.paras_adapt_model.ablation_lambda_t = 2.0
+        cfg.paras_adapt_model.ablation_lambda_t = 1.0
         cfg.paras_adapt_model.ablation_lambda_u = 1.0
-        cfg.paras_adapt_model.ablation_lambda_odp = 10.0 # Bật ODP
+        cfg.paras_adapt_model.ablation_lambda_odp = 20.0 # Bật ODP
     elif mode == "MoTTA_AAMP_2_New_Score":
         # Thay thế: Score = Age + ODP (Bỏ Entropy)
-        cfg.paras_adapt_model.ablation_lambda_t = 2.0
+        cfg.paras_adapt_model.ablation_lambda_t = 1.0
         cfg.paras_adapt_model.ablation_lambda_u = 0.0 # Tắt Entropy
-        cfg.paras_adapt_model.ablation_lambda_odp = 10.0 # Bật ODP
+        cfg.paras_adapt_model.ablation_lambda_odp = 20.0 # Bật ODP
 
     backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma)
     backbone.to(device)
@@ -199,8 +199,8 @@ def main():
     # Danh sách các kịch bản cần test
     MODES_TO_RUN = [
         # "MoTTA_AAMP",
-        "MoTTA_AAMP_3_SCORE",
-        # "MoTTA_AAMP_2_New_Score",
+        # "MoTTA_AAMP_3_SCORE",
+        "MoTTA_AAMP_2_New_Score",
     ]
     
     headers = ["Corruption"] + MODES_TO_RUN
