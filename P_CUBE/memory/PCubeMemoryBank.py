@@ -172,12 +172,12 @@ class PCubeMemoryBank:
             score += self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
 
         if self.lambda_u > 0:
-            score += self.lambda_u * uncertainty / math.log(self.num_classes)
+            score -= self.lambda_u * uncertainty / math.log(self.num_classes)
         
         if self.lambda_odp > 0:
             # ODP Score mặc định đã nằm trong khoảng [0, ~2] (do là 1 - CosineSimilarity)
             # Không cần chia log, chỉ nhân thẳng với hệ số lambda_odp
-            score += self.lambda_odp * odp_score
+            score -= self.lambda_odp * odp_score
 
         return score
 
