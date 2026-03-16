@@ -89,11 +89,10 @@ class P_Cube_Filter:
             final_mask[final_mask.clone()] = current_mask
             
             # 4. Tính toán và In log
-            num_survivors = final_mask.sum().item()
-            print(f"{gate_name}: {num_survivors}/{num_after_prev_gate} samples passed.")
-            
+            # num_survivors = final_mask.sum().item()
+            # print(f"{gate_name}: {num_survivors}/{num_after_prev_gate} samples passed.")  
             # Cập nhật số lượng cho vòng lặp tiếp theo
-            num_after_prev_gate = num_survivors
+            # num_after_prev_gate = num_survivors
 
         return final_mask, final_odp_scores
 
