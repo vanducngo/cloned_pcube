@@ -198,7 +198,7 @@ def main():
     
     # Danh sách các kịch bản cần test
     MODES_TO_RUN = [
-        # "Source_Only",
+        "Source_Only",
         "MoTTA_Original",                # Lấy từ file motta.py gốc
         # "Ablation_ODP_Orig_Mem_MoTTA",   # Sanity Check (P_CUBE Factory)
         "Ablation_ODP_Block_Mem_MoTTA",  # Test ODP
