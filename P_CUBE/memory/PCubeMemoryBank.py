@@ -22,7 +22,6 @@ class PCubeMemoryBank:
         self.alpha_entropy = 0.99 # Hệ số EMA cho entropy
 
         print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={self.capacity}")
-        print(f"Print lamda_ for heuristics score: self.lambda_t={self.lambda_t} - self.lambda_u={self.lambda_u} - self.lambda_odp={self.lambda_odp}")
         
         self.data: list[list[MemoryItem]] = [[] for _ in range(self.num_classes)]
 
@@ -172,12 +171,12 @@ class PCubeMemoryBank:
             score += self.lambda_t * 1 / (1 + math.exp(-age / self.capacity))
 
         if self.lambda_u > 0:
-            score -= self.lambda_u * uncertainty / math.log(self.num_classes)
+            score += self.lambda_u * uncertainty / math.log(self.num_classes)
         
-        if self.lambda_odp > 0:
-            # ODP Score mặc định đã nằm trong khoảng [0, ~2] (do là 1 - CosineSimilarity)
-            # Không cần chia log, chỉ nhân thẳng với hệ số lambda_odp
-            score -= self.lambda_odp * odp_score
+        # if self.lambda_odp > 0:
+        #     # ODP Score mặc định đã nằm trong khoảng [0, ~2] (do là 1 - CosineSimilarity)
+        #     # Không cần chia log, chỉ nhân thẳng với hệ số lambda_odp
+        #     score += self.lambda_odp * odp_score
 
         return score
 

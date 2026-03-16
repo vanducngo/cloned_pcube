@@ -21,21 +21,21 @@ SEVERITY = 5
 
 # Danh sách 15 loại nhiễu của ImageNet-C
 CORRUPTIONS = [
-    # "gaussian_noise", 
-    # "shot_noise", 
-    # "impulse_noise",
-    # "defocus_blur", 
-    # "glass_blur", 
-    # "motion_blur", 
-    # "zoom_blur",
-    # "snow", 
-    # "frost", 
-    # "fog",
-    # "brightness",
-    # "contrast",
-    # "elastic_transform", 
-    # "pixelate", 
-    # "jpeg_compression"
+    "gaussian_noise", 
+    "shot_noise", 
+    "impulse_noise",
+    "defocus_blur", 
+    "glass_blur", 
+    "motion_blur", 
+    "zoom_blur",
+    "snow", 
+    "frost", 
+    "fog",
+    "brightness",
+    "contrast",
+    "elastic_transform", 
+    "pixelate", 
+    "jpeg_compression"
 ]
 
 # CORRUPTIONS = ["zoom_blur"]
@@ -200,7 +200,7 @@ def main():
     MODES_TO_RUN = [
         "Source_Only",
         "MoTTA_Original",                # Lấy từ file motta.py gốc
-        "Ablation_ODP_Orig_Mem_MoTTA",   # Sanity Check (P_CUBE Factory)
+        # "Ablation_ODP_Orig_Mem_MoTTA",   # Sanity Check (P_CUBE Factory)
         "Ablation_ODP_Block_Mem_MoTTA",  # Test ODP
         "Ablation_ODP_Orig_Mem_AAMP",    # Test Memory
         "MoTTA_AAMP"                     # Phiên bản Full cải tiến

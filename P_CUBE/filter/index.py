@@ -51,7 +51,7 @@ class P_Cube_Filter:
         final_odp_scores = torch.zeros(num_initial_samples, dtype=torch.float, device=batch_samples.device)
 
         filter_pipeline = [
-            ("Gate 1 (Certainty)", self.certainty_filter, True),   # Nhẹ (Chỉ tính Softmax & Entropy)
+            # ("Gate 1 (Certainty)", self.certainty_filter, True),   # Nhẹ (Chỉ tính Softmax & Entropy)
             # ("Gate 2 (Consistency)", self.consistency_filter, False), # Trung bình (Tính Cosine 2 models)
             ("Gate 3 (ODP)", self.odp_filter, True)                # Nặng nhất (Hooks + Forward blocks)
         ]
