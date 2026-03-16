@@ -22,6 +22,7 @@ class PCubeMemoryBank:
         self.alpha_entropy = 0.99 # Hệ số EMA cho entropy
 
         print(f"Initializing PCubeMemoryBank (RoTTA-style + Purgeable) with capacity={self.capacity}")
+        print(f"Print lamda_ for heuristics score: self.lambda_t={self.lambda_t} - self.lambda_u={self.lambda_u} - self.lambda_odp={self.lambda_odp}")
         
         self.data: list[list[MemoryItem]] = [[] for _ in range(self.num_classes)]
 
