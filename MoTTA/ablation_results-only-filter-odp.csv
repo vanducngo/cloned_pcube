@@ -1,0 +1,13 @@
+Corruption,Source_Only,MoTTA_Original,Ablation_ODP_Block_Mem_MoTTA,Ablation_ODP_Orig_Mem_AAMP,MoTTA_AAMP
+gaussian_noise,94.32,71.23,70.90,70.09,69.26
+shot_noise,93.51,68.40,68.01,67.37,66.85
+impulse_noise,93.56,68.23,68.32,68.39,67.38
+defocus_blur,84.97,72.02,69.82,68.34,68.25
+glass_blur,91.77,73.03,72.06,71.52,71.30
+motion_blur,86.70,59.31,59.28,58.76,58.54
+zoom_blur,84.97,71.53,69.36,68.25,68.47
+snow,84.41,52.98,52.55,53.10,52.21
+frost,79.56,59.46,58.55,58.17,57.74
+fog,77.79,43.60,43.21,43.58,42.95
+brightness,44.36,34.43,33.34,33.36,33.09
+contrast,95.78,61.48,60.28,57.95,58.80
