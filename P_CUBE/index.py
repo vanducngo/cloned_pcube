@@ -32,7 +32,9 @@ class P_CUBE(nn.Module):
         # Giai đoạn 2: Memory Bank Chọn loại Memory Bank (ABLATION STUDY)
         if cfg.ablation_memory_type == "aamp":
             self.memory = PCubeMemoryBank(cfg=cfg)
+            print(f'MemoryBank - Sử dụng PCubeMemoryBank')
         elif cfg.ablation_memory_type == "motta":
+            print(f'MemoryBank - Sử dụng DropMemoryBank')
             self.memory = DropMemoryBank(
                 capacity=cfg.memory_capacity, 
                 num_class=cfg.num_classes, 
