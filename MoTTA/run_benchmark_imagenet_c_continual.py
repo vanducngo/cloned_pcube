@@ -3,7 +3,7 @@ import torch
 import csv
 import gc
 from torchvision import models as pt_models, transforms
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader
 from yacs.config import CfgNode as cdict
 from torchvision.datasets import ImageFolder
 from imagenet_subsets import ALL_WNIDS
@@ -38,100 +38,71 @@ CORRUPTIONS = [
     # "jpeg_compression"
 ]
 
-def get_continual_loader(corruption_list):
-    """Tạo một DataLoader duy nhất chạy qua tất cả corruptions liên tiếp."""
-    all_datasets = []
-    transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor()])
-    
-    for corr in corruption_list:
-        path_c = os.path.join(IMAGENETC_ROOT, corr, str(SEVERITY))
-        if not os.path.exists(path_c): continue
-        
-        target_ds = ImageNet1KFolder(root=path_c, transform=transform)
-        noise_ds = ImageNet1KFolder(root=NINCO_ROOT, transform=transform)
-        
-        # Tạo stream cho từng corruption
-        stream = MoTTAStream(target_ds.samples, noise_ds.samples, noise_ratio=0.2, transform=transform)
-        all_datasets.append(stream)
-        
-    return DataLoader(ConcatDataset(all_datasets), batch_size=64, shuffle=False, num_workers=4)
-
-def run_continual_experiment(mode, device):
-    print(f"\n[Continual Mode: {mode}] Running full sequence...")
-    wandb.init(project="MoTTA_Continual_Benchmark", name=mode, reinit=True)
-    
-    # 1. Khởi tạo Model 1 lần duy nhất
-    mu, sigma = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-    cfg = cdict(new_allowed=True); cfg.merge_from_file('config.yml')
-
-    if mode == "Source_Only":
-        model = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device).eval()
-    elif mode == "MoTTA_Original":
-        backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device)
-        model = MoTTA(model=backbone, **cfg.paras_adapt_model).to(device)
-    else: # MoTTA_AAMP
-        backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device)
-        model = MoTTA_AAMP(model=backbone, cfg=cfg, **cfg.paras_adapt_model).to(device)
-
-    # 2. Evaluation
-    loader = get_continual_loader(CORRUPTIONS)
-    correct, total = 0, 0
-    
-    # Dictionary lưu Error rate từng loại nhiễu
-    corruption_errors = {corr: {"correct": 0, "total": 0} for corr in CORRUPTIONS}
-    
-    # Chia dữ liệu theo corruptions (giả định DataLoader trả về batch theo đúng thứ tự list)
-    # Lưu ý: Bạn cần tùy chỉnh để biết batch hiện tại thuộc corruption nào
-    # Cách đơn giản: Chia loader theo corruption trước khi Concat
-    
-    for corr in CORRUPTIONS:
-        loader_corr = get_dataloader(corr) # Helper cũ của bạn
-        for images, labels, is_noise in loader_corr:
-            images, labels = images.to(device), labels.to(device)
-            
-            with torch.no_grad():
-                logits = model(images)['logits'] if mode != "Source_Only" else model(images)
-            
-            clean_idx = (is_noise == 0)
-            if clean_idx.any():
-                preds = logits[clean_idx].argmax(dim=1)
-                corruption_errors[corr]["correct"] += (preds == labels[clean_idx]).sum().item()
-                corruption_errors[corr]["total"] += clean_idx.sum().item()
-        
-        # Kết quả từng corruption
-        c_err = 100 - (corruption_errors[corr]["correct"] / corruption_errors[corr]["total"]) * 100
-        print(f"  -> {corr}: {c_err:.2f}%")
-        correct += corruption_errors[corr]["correct"]
-        total += corruption_errors[corr]["total"]
-
-    avg_error = 100 - (correct / total) * 100
-    print(f"\n[FINAL] Avg Error Rate: {avg_error:.2f}%")
-    
-    wandb.log({"final_avg_error": avg_error})
-    wandb.finish()
-    return avg_error, corruption_errors
-
-
-def main():
+def main_continual():
     device = torch.device("cuda")
     MODES = ["Source_Only", "MoTTA_Original", "MoTTA_AAMP"]
-    results = {m: {} for m in MODES}
-
-    for mode in MODES:
-        avg_err, details = run_continual_experiment(mode, device)
-        results[mode]["Avg"] = avg_err
-        for corr, data in details.items():
-            results[mode][corr] = 100 - (data["correct"]/data["total"])*100
-
-    # Lưu CSV
+    
+    # Mở file CSV kết quả
     with open("continual_results.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["Corruption"] + MODES)
-        for corr in CORRUPTIONS + ["Avg"]:
-            writer.writerow([corr] + [results[m].get(corr, 0) for m in MODES])
+
+    for mode in MODES:
+        print(f"\n[Starting Continual Run] Mode: {mode}")
+        
+        # 1. KHỞI TẠO MODEL (CHỈ 1 LẦN)
+        mu, sigma = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+        cfg = cdict(new_allowed=True); cfg.merge_from_file('config.yml')
+        
+        if mode == "Source_Only":
+            model = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device).eval()
+        elif mode == "MoTTA_Original":
+            backbone = normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device)
+            model = MoTTA(model=backbone, **cfg.paras_adapt_model).to(device).eval()
+        else: # MoTTA_AAMP
+            backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device)
+            model = MoTTA_AAMP(model=backbone, cfg=cfg, **cfg.paras_adapt_model).to(device).eval()
+
+        # 2. VÒNG LẶP QUA 15 CORRUPTIONS (KHÔNG RESET MODEL)
+        results_row = []
+        for corruption in CORRUPTIONS:
+            loader = get_dataloader(corruption)
+            if loader is None: continue
+            
+            correct, total = 0, 0
+            for i, (images, labels, is_noise) in enumerate(loader):
+                images, labels = images.to(device), labels.to(device)
+                
+                with torch.no_grad():
+                    # Nếu là Source Only thì chỉ predict, không adapt
+                    if mode == "Source_Only":
+                        logits = model(images)
+                    else:
+                        output_dict = model(images)
+                        logits = output_dict['logits']
+
+                clean_idx = (is_noise == 0)
+                if clean_idx.any():
+                    preds = logits[clean_idx].argmax(dim=1)
+                    correct += (preds == labels[clean_idx]).sum().item()
+                    total += clean_idx.sum().item()
+            
+            error_rate = 100 - (correct / total) * 100 if total > 0 else 0
+            results_row.append(f"{error_rate:.2f}")
+            print(f"  {corruption}: {error_rate:.2f}%")
+        
+        # Ghi kết quả vào CSV
+        with open("continual_results.csv", "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([mode] + results_row)
+            
+        # Giải phóng GPU trước khi qua mode mới
+        del model
+        torch.cuda.empty_cache()
+        gc.collect()
 
 if __name__ == "__main__":
-    main()
+    main_continual()
 
 # --- DATASET HELPER ---
 class ImageNet1KFolder(ImageFolder):
