@@ -38,6 +38,42 @@ CORRUPTIONS = [
     # "jpeg_compression"
 ]
 
+# --- DATASET HELPER ---
+class ImageNet1KFolder(ImageFolder):
+    def find_classes(self, directory):
+        classes = [d.name for d in os.scandir(directory) if d.is_dir() and d.name.startswith('n')]
+        if not classes:
+            classes = [d.name for d in os.scandir(directory) if d.is_dir() and not d.name.startswith('.')]
+        classes.sort()
+        class_to_idx = {}
+        for cls_name in classes:
+            if cls_name in ALL_WNIDS:
+                class_to_idx[cls_name] = ALL_WNIDS.index(cls_name)
+            else:
+                class_to_idx[cls_name] = -1
+        return classes, class_to_idx
+
+def get_dataloader(corruption_type):
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+    ])
+    
+    path_c = os.path.join(IMAGENETC_ROOT, corruption_type, str(SEVERITY))
+    
+    # Kiểm tra đường dẫn tồn tại
+    if not os.path.exists(path_c):
+        print(f"Warning: Không tìm thấy {path_c}. Bỏ qua.")
+        return None
+
+    target_ds = ImageNet1KFolder(root=path_c, transform=transform)
+    noise_ds = ImageNet1KFolder(root=NINCO_ROOT, transform=transform)
+    
+    stream_dataset = MoTTAStream(target_ds.samples, noise_ds.samples, noise_ratio=0.2, transform=transform)
+    loader = DataLoader(stream_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
+    return loader
+
 def main_continual():
     device = torch.device("cuda")
     MODES = ["Source_Only", "MoTTA_Original", "MoTTA_AAMP"]
@@ -104,41 +140,7 @@ def main_continual():
 if __name__ == "__main__":
     main_continual()
 
-# --- DATASET HELPER ---
-class ImageNet1KFolder(ImageFolder):
-    def find_classes(self, directory):
-        classes = [d.name for d in os.scandir(directory) if d.is_dir() and d.name.startswith('n')]
-        if not classes:
-            classes = [d.name for d in os.scandir(directory) if d.is_dir() and not d.name.startswith('.')]
-        classes.sort()
-        class_to_idx = {}
-        for cls_name in classes:
-            if cls_name in ALL_WNIDS:
-                class_to_idx[cls_name] = ALL_WNIDS.index(cls_name)
-            else:
-                class_to_idx[cls_name] = -1
-        return classes, class_to_idx
 
-def get_dataloader(corruption_type):
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-    ])
-    
-    path_c = os.path.join(IMAGENETC_ROOT, corruption_type, str(SEVERITY))
-    
-    # Kiểm tra đường dẫn tồn tại
-    if not os.path.exists(path_c):
-        print(f"Warning: Không tìm thấy {path_c}. Bỏ qua.")
-        return None
-
-    target_ds = ImageNet1KFolder(root=path_c, transform=transform)
-    noise_ds = ImageNet1KFolder(root=NINCO_ROOT, transform=transform)
-    
-    stream_dataset = MoTTAStream(target_ds.samples, noise_ds.samples, noise_ratio=0.2, transform=transform)
-    loader = DataLoader(stream_dataset, batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
-    return loader
 
 # # --- HÀM CHẠY EXPERIMENT CHUNG ---
 # def run_experiment(mode, corruption_type, device):
