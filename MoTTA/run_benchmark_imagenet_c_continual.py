@@ -22,20 +22,20 @@ SEVERITY = 5
 # Danh sách 15 loại nhiễu của ImageNet-C
 CORRUPTIONS = [
     "gaussian_noise", 
-    # "shot_noise", 
-    # "impulse_noise",
+    "shot_noise", 
+    "impulse_noise",
     "defocus_blur", 
-    # "glass_blur", 
-    # "motion_blur", 
-    # "zoom_blur",
+    "glass_blur", 
+    "motion_blur", 
+    "zoom_blur",
     "snow", 
-    # "frost", 
-    # "fog",
-    # "brightness",
+    "frost", 
+    "fog",
+    "brightness",
     "contrast",
-    # "elastic_transform", 
-    # "pixelate", 
-    # "jpeg_compression"
+    "elastic_transform", 
+    "pixelate", 
+    "jpeg_compression"
 ]
 
 # --- DATASET HELPER ---
@@ -76,7 +76,8 @@ def get_dataloader(corruption_type):
 
 def main_continual():
     device = torch.device("cuda")
-    MODES = ["Source_Only", "MoTTA_Original", "MoTTA_AAMP"]
+    # MODES = ["Source_Only", "MoTTA_Original", "MoTTA_AAMP"]
+    MODES = ["MoTTA_AAMP"]
     
     # Mở file CSV kết quả
     with open("continual_results.csv", "w", newline="") as f:
@@ -97,7 +98,7 @@ def main_continual():
             model = MoTTA(model=backbone, **cfg.paras_adapt_model).to(device).eval()
         else: # MoTTA_AAMP
             backbone = aamp_normalize_model(pt_models.resnet50(pretrained=True), mu, sigma).to(device)
-            model = MoTTA_AAMP(model=backbone, cfg=cfg, **cfg.paras_adapt_model).to(device).eval()
+            model = MoTTA_AAMP(model=backbone, **cfg.paras_adapt_model).to(device).eval()
 
         # 2. VÒNG LẶP QUA 15 CORRUPTIONS (KHÔNG RESET MODEL)
         results_row = []
