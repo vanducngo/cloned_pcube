@@ -33,19 +33,41 @@ class MoTTAStream(Dataset):
     def __len__(self):
         return len(self.combined_list)
 
-    def __getitem__(self, idx):
-        # Lấy mẫu từ danh sách đã trộn
-        (path, label), is_noise = self.combined_list[idx]
+    # def __getitem__(self, idx):
+    #     # Lấy mẫu từ danh sách đã trộn
+    #     (path, label), is_noise = self.combined_list[idx]
         
-        # Mở và tiền xử lý ảnh
-        try:
-            img = Image.open(path).convert('RGB')
-        except Exception as e:
-            print(f"Lỗi khi đọc ảnh {path}: {e}")
-            # Trả về ảnh đen nếu lỗi (để không dừng chương trình)
-            img = Image.new('RGB', (224, 224))
+    #     # Mở và tiền xử lý ảnh
+    #     try:
+    #         img = Image.open(path).convert('RGB')
+    #     except Exception as e:
+    #         print(f"Lỗi khi đọc ảnh {path}: {e}")
+    #         # Trả về ảnh đen nếu lỗi (để không dừng chương trình)
+    #         img = Image.new('RGB', (224, 224))
             
+    #     if self.transform:
+    #         img = self.transform(img)
+            
+    #     return img, label, is_noise
+
+
+    def __getitem__(self, idx):
+        (data, label), is_noise = self.combined_list[idx]
+        
+        # Nếu data là đường dẫn file (string)
+        if isinstance(data, str):
+            img = Image.open(data).convert('RGB')
+        # Nếu data đã là Tensor (từ trường hợp noise tổng hợp)
+        else:
+            img = data 
+            
+        # Đảm bảo luôn áp dụng transform và chuyển thành Tensor
         if self.transform:
             img = self.transform(img)
+        
+        # Nếu transform chưa chuyển thành Tensor (kiểm tra lại transform của bạn)
+        if not isinstance(img, torch.Tensor):
+            from torchvision.transforms import ToTensor
+            img = ToTensor()(img)
             
         return img, label, is_noise
