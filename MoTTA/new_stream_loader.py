@@ -33,39 +33,42 @@ class MoTTAStream(Dataset):
     def __len__(self):
         return len(self.combined_list)
 
-    # def __getitem__(self, idx):
-    #     # Lấy mẫu từ danh sách đã trộn
-    #     (path, label), is_noise = self.combined_list[idx]
-        
-    #     # Mở và tiền xử lý ảnh
-    #     try:
-    #         img = Image.open(path).convert('RGB')
-    #     except Exception as e:
-    #         print(f"Lỗi khi đọc ảnh {path}: {e}")
-    #         # Trả về ảnh đen nếu lỗi (để không dừng chương trình)
-    #         img = Image.new('RGB', (224, 224))
-            
-    #     if self.transform:
-    #         img = self.transform(img)
-            
-    #     return img, label, is_noise
-
-
     def __getitem__(self, idx):
-        (data, label), is_noise = self.combined_list[idx]
+        # Lấy mẫu từ danh sách đã trộn
+        (path, label), is_noise = self.combined_list[idx]
         
-        # Nếu data là đường dẫn file (string)
-        if isinstance(data, str):
-            img = Image.open(data).convert('RGB')
-        # Nếu data đã là Tensor (từ trường hợp noise tổng hợp)
-        else:
-            img = data 
+        # Mở và tiền xử lý ảnh
+        try:
+            img = Image.open(path).convert('RGB')
+        except Exception as e:
+            print(f"Lỗi khi đọc ảnh {path}: {e}")
+            # Trả về ảnh đen nếu lỗi (để không dừng chương trình)
+            img = Image.new('RGB', (224, 224))
             
-        # Đảm bảo các giá trị trả về đều là Tensor
-        img = self.transform(img) # Đã là Tensor
+        if self.transform:
+            img = self.transform(img)
         
-        # Ép kiểu tường minh
         label = torch.tensor(label, dtype=torch.long)
         is_noise = torch.tensor(is_noise, dtype=torch.long)
-            
+
         return img, label, is_noise
+
+
+    # def __getitem__(self, idx):
+    #     (data, label), is_noise = self.combined_list[idx]
+        
+    #     # Nếu data là đường dẫn file (string)
+    #     if isinstance(data, str):
+    #         img = Image.open(data).convert('RGB')
+    #     # Nếu data đã là Tensor (từ trường hợp noise tổng hợp)
+    #     else:
+    #         img = data 
+            
+    #     # Đảm bảo các giá trị trả về đều là Tensor
+    #     img = self.transform(img) # Đã là Tensor
+        
+    #     # Ép kiểu tường minh
+    #     label = torch.tensor(label, dtype=torch.long)
+    #     is_noise = torch.tensor(is_noise, dtype=torch.long)
+            
+    #     return img, label, is_noise
