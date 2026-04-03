@@ -57,12 +57,12 @@ def run_continual_bench(dataset_name, mode, device):
     # Hãy đảm bảo hàm build_model của bạn chọn đúng kiến trúc theo cfg
     
     if mode == "Source_Only":
-        model = build_model(cfg).to(device).eval()
+        model = build_model(dataset_name).to(device).eval()
     elif mode == "MoTTA_Original":
-        backbone = build_model(cfg).to(device)
+        backbone = build_model(dataset_name).to(device)
         model = MoTTA(model=backbone, **cfg.paras_adapt_model).to(device).eval()
     else: # MoTTA_AAMP
-        backbone = build_model(cfg).to(device)
+        backbone = build_model(dataset_name).to(device)
         numclass = 10 if dataset_name == 'cifar10' else 100
         cfg.num_classes = numclass
         model = MoTTA_AAMP(model=backbone, cfg=cfg, **cfg.paras_adapt_model).to(device).eval()
