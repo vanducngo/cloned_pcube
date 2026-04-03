@@ -61,13 +61,11 @@ class MoTTAStream(Dataset):
         else:
             img = data 
             
-        # Đảm bảo luôn áp dụng transform và chuyển thành Tensor
-        if self.transform:
-            img = self.transform(img)
+        # Đảm bảo các giá trị trả về đều là Tensor
+        img = self.transform(img) # Đã là Tensor
         
-        # Nếu transform chưa chuyển thành Tensor (kiểm tra lại transform của bạn)
-        if not isinstance(img, torch.Tensor):
-            from torchvision.transforms import ToTensor
-            img = ToTensor()(img)
+        # Ép kiểu tường minh
+        label = torch.tensor(label, dtype=torch.long)
+        is_noise = torch.tensor(is_noise, dtype=torch.long)
             
         return img, label, is_noise
