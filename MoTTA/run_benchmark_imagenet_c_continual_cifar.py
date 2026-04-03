@@ -13,6 +13,8 @@ from motta import MoTTA, normalize_model
 from motta_aamp import MoTTA_AAMP, normalize_model as aamp_normalize_model
 from MoTTA.new_stream_loader import MoTTAStream
 from robustbench.data import load_cifar10c, load_cifar100c # Dùng thư viện chuẩn của robustbench
+from torchvision.datasets import SVHN
+
 
 # --- CẤU HÌNH ---
 CORRUPTIONS = [
@@ -42,10 +44,15 @@ def get_cifar_loader(dataset_name, corruption, severity, batch_size=64):
         x, y = load_cifar10c(n_examples, severity, data_dir, False, [corruption])
     else:
         x, y = load_cifar100c(n_examples, severity, data_dir, False, [corruption])
-        
+    
+    # Tải tập SVHN test
+    noise_ds = SVHN(root='./Data', split='test', download=True)
+    # Lấy ra các mẫu làm nhiễu
+    noise_samples = [(img, -1) for img, _ in noise_ds]
+
     # Tạo stream với 20% nhiễu (Dùng ngẫu nhiên một phần x,y làm noise)
     # Ở đây chúng ta mock noise bằng cách xáo trộn 20% dữ liệu
-    stream_dataset = MoTTAStream(list(zip(x, y)), noise_ratio=0.2) 
+    stream_dataset = MoTTAStream(list(zip(x, y)), noise_samples, noise_ratio=0.2) 
     return DataLoader(stream_dataset, batch_size=batch_size, shuffle=False)
 
 def run_continual_bench(dataset_name, mode, device):
