@@ -1,0 +1,6 @@
+Mode,gaussian_noise,shot_noise,impulse_noise,defocus_blur,glass_blur,motion_blur,zoom_blur,snow,frost,fog,brightness,contrast,elastic_transform,pixelate,jpeg_compression,Final_Avg_Error
+Source_Only,94.32,93.51,93.56,84.97,91.77,86.70,84.97,84.41,79.56,77.79,44.36,95.78,85.68,77.01,65.46,82.66
+MoTTA_Original,70.80,65.31,65.60,76.06,75.55,62.76,70.78,58.46,60.34,45.15,35.62,60.73,47.57,43.34,49.73,59.19
+Ablation_ODP_Block_Mem_MoTTA,70.37,64.84,65.35,71.57,71.62,60.08,68.20,55.16,58.09,43.73,34.10,60.62,47.07,42.90,48.11,57.46
+Ablation_ODP_Orig_Mem_AAMP,70.44,64.51,64.55,69.98,70.28,59.08,66.49,54.52,57.61,43.79,33.78,56.91,46.35,42.76,47.86,56.59
+MoTTA_AAMP,69.63,63.50,64.01,69.50,69.95,58.13,66.40,53.92,56.75,43.00,33.66,57.14,45.85,42.45,47.40,56.09
